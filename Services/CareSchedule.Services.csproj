@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Models\CareSchedule.Models.csproj" />
+    <ProjectReference Include="..\Repositories\CareSchedule.Repositories.csproj" />
+    <ProjectReference Include="..\DTOs\CareSchedule.DTOs.csproj" />
+  </ItemGroup>
+
+</Project>

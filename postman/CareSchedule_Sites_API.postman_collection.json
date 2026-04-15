@@ -1,0 +1,216 @@
+{
+  "info": {
+    "_postman_id": "careschedule-sites-api",
+    "name": "CareSchedule - Sites API",
+    "description": "Complete API testing collection for CareSchedule Sites Management",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Search Sites (GET with filters)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/masterdata/sites?page=1&pageSize=10&sortBy=name&sortDir=asc",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "masterdata",
+            "sites"
+          ],
+          "query": [
+            {
+              "key": "name",
+              "value": "",
+              "disabled": true
+            },
+            {
+              "key": "status",
+              "value": "Active",
+              "disabled": true
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "pageSize",
+              "value": "10"
+            },
+            {
+              "key": "sortBy",
+              "value": "name"
+            },
+            {
+              "key": "sortDir",
+              "value": "asc"
+            }
+          ]
+        },
+        "description": "Search all sites with pagination and sorting"
+      },
+      "response": []
+    },
+    {
+      "name": "2. Get Site by ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/masterdata/sites/1",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "masterdata",
+            "sites",
+            "1"
+          ]
+        },
+        "description": "Get a specific site by ID"
+      },
+      "response": []
+    },
+    {
+      "name": "3. Create New Site (POST)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Mumbai Hospital\",\n  \"timezone\": \"India Standard Time\",\n  \"addressJson\": \"{\\\"street\\\":\\\"123 Marine Drive\\\",\\\"city\\\":\\\"Mumbai\\\",\\\"state\\\":\\\"Maharashtra\\\",\\\"zip\\\":\\\"400001\\\",\\\"country\\\":\\\"India\\\"}\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/masterdata/sites",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "masterdata",
+            "sites"
+          ]
+        },
+        "description": "Create a new site"
+      },
+      "response": []
+    },
+    {
+      "name": "4. Update Site (PUT)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Delhi Healthcare Center\",\n  \"timezone\": \"India Standard Time\",\n  \"addressJson\": \"{\\\"street\\\":\\\"456 Connaught Place\\\",\\\"city\\\":\\\"Delhi\\\",\\\"state\\\":\\\"Delhi\\\",\\\"zip\\\":\\\"110001\\\",\\\"country\\\":\\\"India\\\"}\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/masterdata/sites/1",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "masterdata",
+            "sites",
+            "1"
+          ]
+        },
+        "description": "Update an existing site"
+      },
+      "response": []
+    },
+    {
+      "name": "5. Deactivate Site (DELETE)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/masterdata/sites/1",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "masterdata",
+            "sites",
+            "1"
+          ]
+        },
+        "description": "Soft delete - sets status to Inactive"
+      },
+      "response": []
+    },
+    {
+      "name": "6. Activate Site (POST)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/masterdata/sites/1/activate",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "masterdata",
+            "sites",
+            "1",
+            "activate"
+          ]
+        },
+        "description": "Activate an inactive site"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5159",
+      "type": "string"
+    }
+  ]
+}

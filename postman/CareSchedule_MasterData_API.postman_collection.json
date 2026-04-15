@@ -1,0 +1,938 @@
+{
+  "info": {
+    "_postman_id": "careschedule-masterdata-api",
+    "name": "CareSchedule - Master Data API (Providers, Services, Mappings)",
+    "description": "Complete API testing collection for CareSchedule Master Data module: Providers, Services, and ProviderService mappings. Run requests in order — POST requests auto-save IDs into environment variables for subsequent calls.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Providers",
+      "item": [
+        {
+          "name": "1. Create Provider (POST)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('provider_id', json.data.providerId);",
+                  "    pm.test('Provider created', function () {",
+                  "        pm.expect(json.success).to.be.true;",
+                  "        pm.expect(json.data.name).to.eql('Dr. Anil Sharma');",
+                  "        pm.expect(json.data.status).to.eql('Active');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. Anil Sharma\",\n  \"specialty\": \"Cardiology\",\n  \"credentials\": \"MBBS, MD Cardiology\",\n  \"contactInfo\": \"anil.sharma@clinic.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/providers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "providers"]
+            },
+            "description": "Create a new provider. Auto-saves providerId to environment."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Create Provider 2 (POST)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('provider_id_2', json.data.providerId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. Priya Patel\",\n  \"specialty\": \"Dermatology\",\n  \"credentials\": \"MBBS, MD Dermatology\",\n  \"contactInfo\": \"priya.patel@clinic.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/providers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "providers"]
+            },
+            "description": "Create a second provider for mapping tests."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Get All Providers (GET)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns provider list', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/providers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "providers"]
+            },
+            "description": "Get all providers"
+          },
+          "response": []
+        },
+        {
+          "name": "4. Get Provider by ID (GET)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns single provider', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.providerId).to.eql(parseInt(pm.environment.get('provider_id')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/providers/{{provider_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "providers", "{{provider_id}}"]
+            },
+            "description": "Get a specific provider by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "5. Update Provider (PUT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Provider updated', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.specialty).to.eql('Interventional Cardiology');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"specialty\": \"Interventional Cardiology\",\n  \"credentials\": \"MBBS, MD, DM Cardiology\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/providers/{{provider_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "providers", "{{provider_id}}"]
+            },
+            "description": "Update provider fields (partial update)"
+          },
+          "response": []
+        },
+        {
+          "name": "6. Deactivate Provider (DELETE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Provider deactivated', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.message).to.include('deactivated');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/providers/{{provider_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "providers", "{{provider_id}}"]
+            },
+            "description": "Soft delete - sets status to Inactive"
+          },
+          "response": []
+        },
+        {
+          "name": "7. Activate Provider (POST)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Provider activated', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.message).to.include('activated');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/providers/{{provider_id}}/activate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "providers", "{{provider_id}}", "activate"]
+            },
+            "description": "Reactivate an inactive provider"
+          },
+          "response": []
+        },
+        {
+          "name": "8. Get Non-Existent Provider (404 test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/providers/9999",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "providers", "9999"]
+            },
+            "description": "Test 404 response for non-existent provider"
+          },
+          "response": []
+        },
+        {
+          "name": "9. Create Provider - Empty Name (400 test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 for empty name', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"specialty\": \"General\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/providers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "providers"]
+            },
+            "description": "Test validation: empty name should return 400"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "item": [
+        {
+          "name": "1. Create Service (POST)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('service_id', json.data.serviceId);",
+                  "    pm.test('Service created', function () {",
+                  "        pm.expect(json.success).to.be.true;",
+                  "        pm.expect(json.data.name).to.eql('General Consultation');",
+                  "        pm.expect(json.data.status).to.eql('Active');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"General Consultation\",\n  \"visitType\": \"New\",\n  \"defaultDurationMin\": 30,\n  \"bufferBeforeMin\": 5,\n  \"bufferAfterMin\": 5\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/services",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "services"]
+            },
+            "description": "Create a new service. Auto-saves serviceId to environment."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Create Service 2 (POST)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('service_id_2', json.data.serviceId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Follow-Up Checkup\",\n  \"visitType\": \"FollowUp\",\n  \"defaultDurationMin\": 15,\n  \"bufferBeforeMin\": 0,\n  \"bufferAfterMin\": 5\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/services",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "services"]
+            },
+            "description": "Create a second service for mapping tests."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Create Service 3 - Procedure (POST)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('service_id_3', json.data.serviceId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"ECG Test\",\n  \"visitType\": \"Procedure\",\n  \"defaultDurationMin\": 45,\n  \"bufferBeforeMin\": 10,\n  \"bufferAfterMin\": 10\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/services",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "services"]
+            },
+            "description": "Create a procedure-type service."
+          },
+          "response": []
+        },
+        {
+          "name": "4. Get All Services (GET)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns service list', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/services",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "services"]
+            },
+            "description": "Get all services"
+          },
+          "response": []
+        },
+        {
+          "name": "5. Get Service by ID (GET)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns single service', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.serviceId).to.eql(parseInt(pm.environment.get('service_id')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/services/{{service_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "services", "{{service_id}}"]
+            },
+            "description": "Get a specific service by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "6. Update Service (PUT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Service updated', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.defaultDurationMin).to.eql(45);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"defaultDurationMin\": 45,\n  \"bufferAfterMin\": 10\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/services/{{service_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "services", "{{service_id}}"]
+            },
+            "description": "Update service fields (partial update)"
+          },
+          "response": []
+        },
+        {
+          "name": "7. Deactivate Service (DELETE)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/services/{{service_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "services", "{{service_id}}"]
+            },
+            "description": "Soft delete - sets status to Inactive"
+          },
+          "response": []
+        },
+        {
+          "name": "8. Activate Service (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/services/{{service_id}}/activate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "services", "{{service_id}}", "activate"]
+            },
+            "description": "Reactivate an inactive service"
+          },
+          "response": []
+        },
+        {
+          "name": "9. Create Service - Invalid VisitType (400 test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 for invalid visitType', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bad Service\",\n  \"visitType\": \"InvalidType\",\n  \"defaultDurationMin\": 30\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/services",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "services"]
+            },
+            "description": "Test validation: invalid visitType should return 400"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Provider-Service Mappings",
+      "item": [
+        {
+          "name": "1. Assign Service to Provider (POST)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('ps_id', json.data.psid);",
+                  "    pm.test('Mapping created', function () {",
+                  "        pm.expect(json.success).to.be.true;",
+                  "        pm.expect(json.data.status).to.eql('Active');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": {{provider_id}},\n  \"serviceId\": {{service_id}},\n  \"customDurationMin\": 40,\n  \"customBufferBeforeMin\": 10,\n  \"customBufferAfterMin\": 10\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/provider-services",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "provider-services"]
+            },
+            "description": "Assign a service to a provider with custom durations."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Assign Second Service to Same Provider (POST)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('ps_id_2', json.data.psid);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": {{provider_id}},\n  \"serviceId\": {{service_id_2}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/provider-services",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "provider-services"]
+            },
+            "description": "Assign a second service to the same provider (no custom durations)."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Assign Same Service to Second Provider (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": {{provider_id_2}},\n  \"serviceId\": {{service_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/provider-services",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "provider-services"]
+            },
+            "description": "Same service assigned to a different provider (should succeed)."
+          },
+          "response": []
+        },
+        {
+          "name": "4. Duplicate Mapping (400 test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Duplicate rejected with 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.false;",
+                  "    pm.expect(json.message).to.include('already mapped');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": {{provider_id}},\n  \"serviceId\": {{service_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/provider-services",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "provider-services"]
+            },
+            "description": "Try to create duplicate mapping - should return 400."
+          },
+          "response": []
+        },
+        {
+          "name": "5. Non-Existent Provider (400 test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 for bad provider', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.message).to.include('does not exist');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": 9999,\n  \"serviceId\": {{service_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/provider-services",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "provider-services"]
+            },
+            "description": "Test validation: non-existent provider."
+          },
+          "response": []
+        },
+        {
+          "name": "6. Non-Existent Service (400 test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 400 for bad service', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.message).to.include('does not exist');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": {{provider_id}},\n  \"serviceId\": 9999\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/provider-services",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "provider-services"]
+            },
+            "description": "Test validation: non-existent service."
+          },
+          "response": []
+        },
+        {
+          "name": "7. Get Services by Provider (GET)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns services for provider', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "    pm.expect(json.data.length).to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/providers/{{provider_id}}/services",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "providers", "{{provider_id}}", "services"]
+            },
+            "description": "Get all services offered by a specific provider."
+          },
+          "response": []
+        },
+        {
+          "name": "8. Get Providers by Service (GET)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns providers for service', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "    pm.expect(json.data.length).to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/services/{{service_id}}/providers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "services", "{{service_id}}", "providers"]
+            },
+            "description": "Get all providers who offer a specific service."
+          },
+          "response": []
+        },
+        {
+          "name": "9. Remove Mapping (DELETE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Mapping removed', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.message).to.include('removed');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/provider-services/{{ps_id_2}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "provider-services", "{{ps_id_2}}"]
+            },
+            "description": "Remove a provider-service mapping (hard delete)."
+          },
+          "response": []
+        },
+        {
+          "name": "10. Remove Non-Existent Mapping (404 test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Returns 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/masterdata/provider-services/9999",
+              "host": ["{{base_url}}"],
+              "path": ["api", "masterdata", "provider-services", "9999"]
+            },
+            "description": "Test 404 when removing a mapping that doesn't exist."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5159",
+      "type": "string"
+    }
+  ]
+}
