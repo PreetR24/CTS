@@ -43,5 +43,14 @@ namespace CareSchedule.API.Controllers
             return ApiResponse<object>.Ok(null, "Logout successful.");
         }
 
+        [Authorize]
+        [HttpGet("me")]
+        public ActionResult<ApiResponse<MeResponseDto>> Me()
+        {
+            var userId = User.GetUserId();
+            var result = _authService.GetMe(userId);
+            return ApiResponse<MeResponseDto>.Ok(result);
+        }
+
     }
 }
