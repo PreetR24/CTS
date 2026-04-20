@@ -43,7 +43,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("Database connection string not configured. \n Set ConnectionStrings:DefaultConnection in appsettings.Local.json.");
 }
 builder.Services.AddDbContext<CareScheduleContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlite(connectionString));
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -148,6 +148,13 @@ builder.Services.AddScoped<IBillingService, BillingService>();
 // builder.Services.AddHostedService<CareSchedule.API.BackgroundServices.ReminderDispatchService>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<CareScheduleContext>();
+    dbContext.Database.Migrate();
+    await DbSeeder.SeedAsync(dbContext);
+}
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseHttpsRedirection();

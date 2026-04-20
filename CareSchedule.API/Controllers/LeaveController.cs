@@ -28,9 +28,13 @@ namespace CareSchedule.API.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Operations,Admin")]
+        [Authorize]
         public ActionResult<ApiResponse<IEnumerable<LeaveRequestResponseDto>>> Search([FromQuery] LeaveSearchDto dto)
         {
+            if (!User.IsAdmin() && !string.Equals(User.GetRole(), "Operations", StringComparison.OrdinalIgnoreCase))
+            {
+                dto.UserId = User.GetUserId();
+            }
             var list = _leaveservice.Search(dto);
             return ApiResponse<IEnumerable<LeaveRequestResponseDto>>.Ok(list, "Leave requests fetched.");
         }

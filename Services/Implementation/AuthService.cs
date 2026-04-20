@@ -101,6 +101,7 @@ namespace CareSchedule.Services.Implementation
                 Name = user.Name,
                 Role = user.Role,
                 Email = user.Email,
+                ProviderId = user.ProviderId,
                 LandingPage = ResolveLandingPage(user.Role)
             };
         }
@@ -112,7 +113,6 @@ namespace CareSchedule.Services.Implementation
                 "Provider" => "/provider",
                 "FrontDesk" => "/frontdesk",
                 "Nurse" => "/staff",
-                "Tech" => "/staff",
                 "Patient" => "/patient",
                 "Operations" => "/operations",
                 _ => "/"

@@ -9,7 +9,7 @@ namespace CareSchedule.API.Controllers
 {
     [ApiController]
     [Route("slots")]
-    [Authorize(Roles = "FrontDesk,Patient,Provider,Nurse,Tech,Admin")]
+    [Authorize(Roles = "FrontDesk,Patient,Provider,Nurse,Admin")]
     public class SlotsController(IAvailabilityService _availabilityservice, ISlotGenerationService _slotGenerationService) : ControllerBase
     {
         // GET /slots?providerId=&serviceId=&siteId=&date=YYYY-MM-DD

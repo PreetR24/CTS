@@ -20,7 +20,7 @@ namespace CareSchedule.Services.Implementation
             IAuditLogService _auditService,
             IUnitOfWork _uow) : IRosterService
     {
-        private static readonly string[] AllowedRoles = { "Nurse", "Tech", "FrontDesk", "Provider" };
+        private static readonly string[] AllowedRoles = { "Nurse", "FrontDesk", "Provider" };
 
         // ===================== Shift Templates =====================
 

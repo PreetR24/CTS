@@ -2,7 +2,6 @@ using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Data.SqlClient;
 
 namespace CareSchedule.Repositories.Implementation
 {
@@ -28,36 +27,10 @@ namespace CareSchedule.Repositories.Implementation
         public Provider CreateWithId(Provider entity, int providerId)
         {
             if (providerId <= 0) throw new ArgumentException("Invalid providerId.");
-
-            _db.Database.OpenConnection();
-            using var tx = _db.Database.BeginTransaction();
-            try
-            {
-                _db.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [Provider] ON;");
-                _db.Database.ExecuteSqlRaw(
-                    "INSERT INTO [Provider] ([ProviderID], [Name], [Specialty], [Credentials], [ContactInfo], [Status]) VALUES (@id, @name, @specialty, @credentials, @contactInfo, @status);",
-                    new SqlParameter("@id", providerId),
-                    new SqlParameter("@name", entity.Name),
-                    new SqlParameter("@specialty", (object?)entity.Specialty ?? DBNull.Value),
-                    new SqlParameter("@credentials", (object?)entity.Credentials ?? DBNull.Value),
-                    new SqlParameter("@contactInfo", (object?)entity.ContactInfo ?? DBNull.Value),
-                    new SqlParameter("@status", entity.Status)
-                );
-                _db.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [Provider] OFF;");
-                tx.Commit();
-            }
-            catch
-            {
-                tx.Rollback();
-                try { _db.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [Provider] OFF;"); } catch { }
-                throw;
-            }
-            finally
-            {
-                _db.Database.CloseConnection();
-            }
-
-            return _db.Providers.First(p => p.ProviderId == providerId);
+            entity.ProviderId = providerId;
+            _db.Providers.Add(entity);
+            _db.SaveChanges();
+            return entity;
         }
 
         public void Update(Provider entity)
