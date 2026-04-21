@@ -17,6 +17,8 @@ public partial class Provider
 
     public string Status { get; set; } = null!;
 
+    public virtual User? User { get; set; } = null!;
+
     public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
 
     public virtual ICollection<AvailabilityBlock> AvailabilityBlocks { get; set; } = new List<AvailabilityBlock>();

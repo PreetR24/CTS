@@ -788,23 +788,20 @@ public partial class CareScheduleContext : DbContext
 
             entity.ToTable("User");
 
-            entity.HasIndex(e => e.Email, "UQ__User__A9D1053460A18078").IsUnique();
+            entity.HasIndex(e => e.Email).HasDatabaseName("UQ__User__A9D1053460A18078").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("UserID");
-            entity.Property(e => e.Email).HasMaxLength(255);
-            entity.Property(e => e.Name).HasMaxLength(150);
+            entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Name).HasMaxLength(150).IsRequired( );
             entity.Property(e => e.Phone).HasMaxLength(20);
-            entity.Property(e => e.Role).HasMaxLength(50);
+            entity.Property(e => e.Role).HasMaxLength(50).IsRequired();
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValue("Active");
 
-            entity.Property(e => e.ProviderId).HasColumnName("ProviderID");
-
-            entity.HasOne(d => d.Provider).WithMany()
-                .HasForeignKey(d => d.ProviderId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("FK__User__ProviderID");
+            entity.HasOne(u => u.Provider).WithOne(p => p.User)
+                .HasForeignKey<Provider>(p => p.ProviderId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
         });
 
         modelBuilder.Entity<Waitlist>(entity =>

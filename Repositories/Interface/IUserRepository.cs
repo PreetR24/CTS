@@ -1,4 +1,5 @@
 using CareSchedule.Models;
+using System.Threading.Tasks;
 namespace CareSchedule.Repositories.Interface
 {
     public interface IUserRepository
@@ -20,5 +21,6 @@ namespace CareSchedule.Repositories.Interface
         User? Get(int id);
         User Create(User entity);
         void Update(User entity);
+        Task<User?> GetByIdAsync(int userId);
     }
 }

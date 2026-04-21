@@ -114,5 +114,10 @@ namespace CareSchedule.Repositories.Implementation
             _db.Users.Update(entity);
             _db.SaveChanges();
         }
+
+        public async Task<User?> GetByIdAsync(int userId)
+        {
+            return await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId);
+        }
     }
 }

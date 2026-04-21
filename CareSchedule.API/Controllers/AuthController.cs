@@ -28,8 +28,7 @@ namespace CareSchedule.API.Controllers
                 Name = dto.Name,
                 Email = dto.Email,
                 Phone = dto.Phone,
-                Role = "Patient",
-                ProviderId = null
+                Role = "Patient"
             });
             return ApiResponse<UserDto>.Ok(created, "Patient signup successful.");
         }
@@ -45,11 +44,11 @@ namespace CareSchedule.API.Controllers
 
         [Authorize]
         [HttpGet("me")]
-        public ActionResult<ApiResponse<MeResponseDto>> Me()
+        public async Task<ActionResult<ApiResponse<MeResponseDto>>> Me()
         {
             var userId = User.GetUserId();
-            var result = _authService.GetMe(userId);
-            return ApiResponse<MeResponseDto>.Ok(result);
+            var result = await _userService.GetMeAsync(userId);
+            return ApiResponse<MeResponseDto>.Ok(result, "User details fetched.");
         }
 
     }

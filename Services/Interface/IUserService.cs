@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using CareSchedule.DTOs;
 
 namespace CareSchedule.Services.Interface
@@ -13,5 +14,6 @@ namespace CareSchedule.Services.Interface
         void ActivateUser(int id);
         void LockUser(int id);
         void UnlockUser(int id);
+        Task<MeResponseDto> GetMeAsync(int userId);
     }
 }

@@ -27,7 +27,7 @@ namespace CareSchedule.API.Extensions
 
         public static int? GetProviderId(this ClaimsPrincipal principal)
         {
-            var val = principal.FindFirstValue(JwtTokenService.ClaimProviderId);
+            var val = principal.FindFirstValue(ClaimTypes.NameIdentifier);
             return int.TryParse(val, out var id) ? id : null;
         }
 

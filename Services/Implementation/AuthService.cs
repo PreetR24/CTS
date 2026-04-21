@@ -58,7 +58,6 @@ namespace CareSchedule.Services.Implementation
                 Role = user.Role,
                 Email = user.Email,
                 Status = user.Status,
-                ProviderId = user.ProviderId,
                 Token = token
             };
         }
@@ -80,43 +79,5 @@ namespace CareSchedule.Services.Implementation
                 Metadata = "{\"message\":\"User logged out\"}"
             });
         }
-
-        public MeResponseDto GetMe(int userId)
-        {
-            if (userId <= 0)
-                throw new ArgumentException("Invalid userId.");
-
-            var user = _userRepo.GetById(userId);
-            if (user == null)
-                throw new KeyNotFoundException("User not found.");
-
-            if (string.Equals(user.Status, "Inactive", StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException("User is inactive.");
-            if (string.Equals(user.Status, "Locked", StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException("User account is locked.");
-
-            return new MeResponseDto
-            {
-                UserId = user.UserId,
-                Name = user.Name,
-                Role = user.Role,
-                Email = user.Email,
-                ProviderId = user.ProviderId,
-                LandingPage = ResolveLandingPage(user.Role)
-            };
-        }
-
-        private static string ResolveLandingPage(string role) =>
-            role switch
-            {
-                "Admin" => "/admin",
-                "Provider" => "/provider",
-                "FrontDesk" => "/frontdesk",
-                "Nurse" => "/staff",
-                "Patient" => "/patient",
-                "Operations" => "/operations",
-                _ => "/"
-            };
-
     }
 }

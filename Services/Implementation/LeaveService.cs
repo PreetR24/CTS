@@ -21,6 +21,7 @@ namespace CareSchedule.Services.Implementation
             IAvailabilityBlockRepository _blockRepo,
             ICalendarEventRepository _calendarRepo,
             IUserRepository _userRepo,
+            IProviderRepository _providerRepo,
             IUnitOfWork _uow) : ILeaveService
     {
         private static readonly string[] AllowedLeaveTypes = { "Vacation", "Sick", "CME", "Other" };
@@ -114,8 +115,7 @@ namespace CareSchedule.Services.Implementation
             entity.Status = "Approved";
             _leaveRepo.Update(entity);
 
-            var user = _userRepo.GetById(entity.UserId);
-            var providerId = user?.ProviderId;
+            var providerId = _providerRepo.GetById(entity.UserId)?.ProviderId;
 
             // Create AvailabilityBlocks + CalendarEvents for each day in leave range
             if (providerId.HasValue)

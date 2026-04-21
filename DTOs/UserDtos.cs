@@ -8,7 +8,6 @@ namespace CareSchedule.DTOs
         public string Email { get; set; } = "";
         public string? Phone { get; set; }
         public string Status { get; set; } = "";
-        public int? ProviderId { get; set; }
     }
 
     public class UserCreateDto
@@ -17,7 +16,6 @@ namespace CareSchedule.DTOs
         public string Role { get; set; } = "";
         public string Email { get; set; } = "";
         public string? Phone { get; set; }
-        public int? ProviderId { get; set; }
     }
 
     public class UserUpdateDto
@@ -26,7 +24,6 @@ namespace CareSchedule.DTOs
         public string? Role { get; set; }
         public string? Email { get; set; }
         public string? Phone { get; set; }
-        public int? ProviderId { get; set; }
     }
 
     public class UserSearchQuery

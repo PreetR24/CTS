@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CareSchedule.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialSqlite : Migration
+    public partial class InitialSqlServer : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,16 +15,16 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "CapacityRule",
                 columns: table => new
                 {
-                    RuleID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Scope = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    ScopeID = table.Column<int>(type: "INTEGER", nullable: true),
-                    MaxApptsPerDay = table.Column<int>(type: "INTEGER", nullable: true),
-                    MaxConcurrentRooms = table.Column<int>(type: "INTEGER", nullable: true),
-                    BufferMin = table.Column<int>(type: "INTEGER", nullable: false),
-                    EffectiveFrom = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    EffectiveTo = table.Column<DateOnly>(type: "TEXT", nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
+                    RuleID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Scope = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    ScopeID = table.Column<int>(type: "int", nullable: true),
+                    MaxApptsPerDay = table.Column<int>(type: "int", nullable: true),
+                    MaxConcurrentRooms = table.Column<int>(type: "int", nullable: true),
+                    BufferMin = table.Column<int>(type: "int", nullable: false),
+                    EffectiveFrom = table.Column<DateOnly>(type: "date", nullable: false),
+                    EffectiveTo = table.Column<DateOnly>(type: "date", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
                 },
                 constraints: table =>
                 {
@@ -35,11 +35,11 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "OpsReport",
                 columns: table => new
                 {
-                    ReportID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Scope = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    MetricsJSON = table.Column<string>(type: "TEXT", nullable: true),
-                    GeneratedDate = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "(getdate())")
+                    ReportID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Scope = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    MetricsJSON = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    GeneratedDate = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
                 },
                 constraints: table =>
                 {
@@ -47,34 +47,17 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Provider",
-                columns: table => new
-                {
-                    ProviderID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 150, nullable: false),
-                    Specialty = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
-                    Credentials = table.Column<string>(type: "TEXT", maxLength: 200, nullable: true),
-                    ContactInfo = table.Column<string>(type: "TEXT", maxLength: 200, nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK__Provider__B54C689D9E0B5E1B", x => x.ProviderID);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Service",
                 columns: table => new
                 {
-                    ServiceID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 150, nullable: false),
-                    VisitType = table.Column<string>(type: "TEXT", maxLength: 30, nullable: false),
-                    DefaultDurationMin = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 30),
-                    BufferBeforeMin = table.Column<int>(type: "INTEGER", nullable: false),
-                    BufferAfterMin = table.Column<int>(type: "INTEGER", nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
+                    ServiceID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    VisitType = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
+                    DefaultDurationMin = table.Column<int>(type: "int", nullable: false, defaultValue: 30),
+                    BufferBeforeMin = table.Column<int>(type: "int", nullable: false),
+                    BufferAfterMin = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
                 },
                 constraints: table =>
                 {
@@ -85,12 +68,12 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "Site",
                 columns: table => new
                 {
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 150, nullable: false),
-                    AddressJSON = table.Column<string>(type: "TEXT", nullable: true),
-                    Timezone = table.Column<string>(type: "TEXT", maxLength: 60, nullable: false, defaultValue: "UTC"),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
+                    SiteID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    AddressJSON = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Timezone = table.Column<string>(type: "nvarchar(60)", maxLength: 60, nullable: false, defaultValue: "UTC"),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
                 },
                 constraints: table =>
                 {
@@ -101,13 +84,13 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "SLA",
                 columns: table => new
                 {
-                    SLAID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Scope = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    Metric = table.Column<string>(type: "TEXT", maxLength: 30, nullable: false),
-                    TargetValue = table.Column<int>(type: "INTEGER", nullable: false),
-                    Unit = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Minutes"),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
+                    SLAID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Scope = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    Metric = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
+                    TargetValue = table.Column<int>(type: "int", nullable: false),
+                    Unit = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Minutes"),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
                 },
                 constraints: table =>
                 {
@@ -118,126 +101,31 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "User",
                 columns: table => new
                 {
-                    UserID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 150, nullable: false),
-                    Role = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    Email = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
-                    Phone = table.Column<string>(type: "TEXT", maxLength: 20, nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active"),
-                    ProviderID = table.Column<int>(type: "INTEGER", nullable: true)
+                    UserID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    Role = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    Phone = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active"),
+                    ProviderId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK__User__1788CCACA628FF66", x => x.UserID);
-                    table.ForeignKey(
-                        name: "FK__User__ProviderID",
-                        column: x => x.ProviderID,
-                        principalTable: "Provider",
-                        principalColumn: "ProviderID",
-                        onDelete: ReferentialAction.SetNull);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ProviderService",
-                columns: table => new
-                {
-                    PSID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    ProviderID = table.Column<int>(type: "INTEGER", nullable: false),
-                    ServiceID = table.Column<int>(type: "INTEGER", nullable: false),
-                    CustomDurationMin = table.Column<int>(type: "INTEGER", nullable: true),
-                    CustomBufferBeforeMin = table.Column<int>(type: "INTEGER", nullable: true),
-                    CustomBufferAfterMin = table.Column<int>(type: "INTEGER", nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK__Provider__BC00097697A34DEC", x => x.PSID);
-                    table.ForeignKey(
-                        name: "FK__ProviderS__Provi__2EDAF651",
-                        column: x => x.ProviderID,
-                        principalTable: "Provider",
-                        principalColumn: "ProviderID",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK__ProviderS__Servi__2FCF1A8A",
-                        column: x => x.ServiceID,
-                        principalTable: "Service",
-                        principalColumn: "ServiceID");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "AvailabilityBlock",
-                columns: table => new
-                {
-                    BlockID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    ProviderID = table.Column<int>(type: "INTEGER", nullable: false),
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false),
-                    Date = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    StartTime = table.Column<TimeOnly>(type: "TEXT", nullable: false),
-                    EndTime = table.Column<TimeOnly>(type: "TEXT", nullable: false),
-                    Reason = table.Column<string>(type: "TEXT", maxLength: 255, nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK__Availabi__1442151191DB61C9", x => x.BlockID);
-                    table.ForeignKey(
-                        name: "FK__Availabil__Provi__3C34F16F",
-                        column: x => x.ProviderID,
-                        principalTable: "Provider",
-                        principalColumn: "ProviderID",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK__Availabil__SiteI__3D2915A8",
-                        column: x => x.SiteID,
-                        principalTable: "Site",
-                        principalColumn: "SiteID");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "AvailabilityTemplate",
-                columns: table => new
-                {
-                    TemplateID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    ProviderID = table.Column<int>(type: "INTEGER", nullable: false),
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false),
-                    DayOfWeek = table.Column<byte>(type: "INTEGER", nullable: false),
-                    StartTime = table.Column<TimeOnly>(type: "TEXT", nullable: false),
-                    EndTime = table.Column<TimeOnly>(type: "TEXT", nullable: false),
-                    SlotDurationMin = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 15),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK__Availabi__F87ADD0781DF26FF", x => x.TemplateID);
-                    table.ForeignKey(
-                        name: "FK__Availabil__Provi__3493CFA7",
-                        column: x => x.ProviderID,
-                        principalTable: "Provider",
-                        principalColumn: "ProviderID",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK__Availabil__SiteI__3587F3E0",
-                        column: x => x.SiteID,
-                        principalTable: "Site",
-                        principalColumn: "SiteID");
                 });
 
             migrationBuilder.CreateTable(
                 name: "Blackout",
                 columns: table => new
                 {
-                    BlackoutID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false),
-                    StartDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    EndDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    Reason = table.Column<string>(type: "TEXT", maxLength: 255, nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
+                    BlackoutID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SiteID = table.Column<int>(type: "int", nullable: false),
+                    StartDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    EndDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    Reason = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
                 },
                 constraints: table =>
                 {
@@ -254,12 +142,12 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "Holiday",
                 columns: table => new
                 {
-                    HolidayID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false),
-                    Date = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 255, nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
+                    HolidayID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SiteID = table.Column<int>(type: "int", nullable: false),
+                    Date = table.Column<DateOnly>(type: "date", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
                 },
                 constraints: table =>
                 {
@@ -273,53 +161,18 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "PublishedSlot",
-                columns: table => new
-                {
-                    PubSlotID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    ProviderID = table.Column<int>(type: "INTEGER", nullable: false),
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false),
-                    ServiceID = table.Column<int>(type: "INTEGER", nullable: false),
-                    SlotDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    StartTime = table.Column<TimeOnly>(type: "TEXT", nullable: false),
-                    EndTime = table.Column<TimeOnly>(type: "TEXT", nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Open")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK__Publishe__3CFE843623B80371", x => x.PubSlotID);
-                    table.ForeignKey(
-                        name: "FK__Published__Provi__46B27FE2",
-                        column: x => x.ProviderID,
-                        principalTable: "Provider",
-                        principalColumn: "ProviderID",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK__Published__Servi__489AC854",
-                        column: x => x.ServiceID,
-                        principalTable: "Service",
-                        principalColumn: "ServiceID");
-                    table.ForeignKey(
-                        name: "FK__Published__SiteI__47A6A41B",
-                        column: x => x.SiteID,
-                        principalTable: "Site",
-                        principalColumn: "SiteID");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "ResourceHold",
                 columns: table => new
                 {
-                    HoldID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    ResourceType = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    ResourceID = table.Column<int>(type: "INTEGER", nullable: false),
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false),
-                    StartTime = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    EndTime = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    Reason = table.Column<string>(type: "TEXT", maxLength: 255, nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Held")
+                    HoldID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ResourceType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    ResourceID = table.Column<int>(type: "int", nullable: false),
+                    SiteID = table.Column<int>(type: "int", nullable: false),
+                    StartTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EndTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Reason = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Held")
                 },
                 constraints: table =>
                 {
@@ -335,13 +188,13 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "Room",
                 columns: table => new
                 {
-                    RoomID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false),
-                    RoomName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    RoomType = table.Column<string>(type: "TEXT", maxLength: 30, nullable: false),
-                    AttributesJSON = table.Column<string>(type: "TEXT", nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
+                    RoomID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SiteID = table.Column<int>(type: "int", nullable: false),
+                    RoomName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    RoomType = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
+                    AttributesJSON = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
                 },
                 constraints: table =>
                 {
@@ -358,15 +211,15 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "ShiftTemplate",
                 columns: table => new
                 {
-                    ShiftTemplateID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    StartTime = table.Column<TimeOnly>(type: "TEXT", nullable: false),
-                    EndTime = table.Column<TimeOnly>(type: "TEXT", nullable: false),
-                    BreakMinutes = table.Column<int>(type: "INTEGER", nullable: false),
-                    Role = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
+                    ShiftTemplateID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    StartTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    EndTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    BreakMinutes = table.Column<int>(type: "int", nullable: false),
+                    Role = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    SiteID = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
                 },
                 constraints: table =>
                 {
@@ -382,13 +235,13 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "AuditLog",
                 columns: table => new
                 {
-                    AuditID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    UserID = table.Column<int>(type: "INTEGER", nullable: true),
-                    Action = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Resource = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Timestamp = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "(getdate())"),
-                    Metadata = table.Column<string>(type: "TEXT", nullable: true)
+                    AuditID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserID = table.Column<int>(type: "int", nullable: true),
+                    Action = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Resource = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())"),
+                    Metadata = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -405,15 +258,15 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "LeaveRequest",
                 columns: table => new
                 {
-                    LeaveID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    UserID = table.Column<int>(type: "INTEGER", nullable: false),
-                    LeaveType = table.Column<string>(type: "TEXT", maxLength: 30, nullable: false),
-                    StartDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    EndDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    Reason = table.Column<string>(type: "TEXT", nullable: true),
-                    SubmittedDate = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "(getdate())"),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Pending")
+                    LeaveID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserID = table.Column<int>(type: "int", nullable: false),
+                    LeaveType = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
+                    StartDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    EndDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    Reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SubmittedDate = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())"),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Pending")
                 },
                 constraints: table =>
                 {
@@ -429,13 +282,13 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "Notification",
                 columns: table => new
                 {
-                    NotificationID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    UserID = table.Column<int>(type: "INTEGER", nullable: false),
-                    Message = table.Column<string>(type: "TEXT", nullable: false),
-                    Category = table.Column<string>(type: "TEXT", maxLength: 30, nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Unread"),
-                    CreatedDate = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "(getdate())")
+                    NotificationID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserID = table.Column<int>(type: "int", nullable: false),
+                    Message = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Category = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Unread"),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
                 },
                 constraints: table =>
                 {
@@ -451,16 +304,16 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "OnCallCoverage",
                 columns: table => new
                 {
-                    OnCallID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false),
-                    Department = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
-                    Date = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    StartTime = table.Column<TimeOnly>(type: "TEXT", nullable: false),
-                    EndTime = table.Column<TimeOnly>(type: "TEXT", nullable: false),
-                    PrimaryUserID = table.Column<int>(type: "INTEGER", nullable: false),
-                    BackupUserID = table.Column<int>(type: "INTEGER", nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
+                    OnCallID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SiteID = table.Column<int>(type: "int", nullable: false),
+                    Department = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Date = table.Column<DateOnly>(type: "date", nullable: false),
+                    StartTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    EndTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    PrimaryUserID = table.Column<int>(type: "int", nullable: false),
+                    BackupUserID = table.Column<int>(type: "int", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
                 },
                 constraints: table =>
                 {
@@ -483,18 +336,39 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Provider",
+                columns: table => new
+                {
+                    ProviderID = table.Column<int>(type: "int", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    Specialty = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Credentials = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    ContactInfo = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK__Provider__B54C689D9E0B5E1B", x => x.ProviderID);
+                    table.ForeignKey(
+                        name: "FK_Provider_User_ProviderID",
+                        column: x => x.ProviderID,
+                        principalTable: "User",
+                        principalColumn: "UserID");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Roster",
                 columns: table => new
                 {
-                    RosterID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false),
-                    Department = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
-                    PeriodStart = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    PeriodEnd = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    PublishedBy = table.Column<int>(type: "INTEGER", nullable: true),
-                    PublishedDate = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Draft")
+                    RosterID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SiteID = table.Column<int>(type: "int", nullable: false),
+                    Department = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    PeriodStart = table.Column<DateOnly>(type: "date", nullable: false),
+                    PeriodEnd = table.Column<DateOnly>(type: "date", nullable: false),
+                    PublishedBy = table.Column<int>(type: "int", nullable: true),
+                    PublishedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Draft")
                 },
                 constraints: table =>
                 {
@@ -516,13 +390,13 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "SystemConfig",
                 columns: table => new
                 {
-                    ConfigID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Key = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Value = table.Column<string>(type: "TEXT", nullable: false),
-                    Scope = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Global"),
-                    UpdatedBy = table.Column<int>(type: "INTEGER", nullable: true),
-                    UpdatedDate = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "(getdate())")
+                    ConfigID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Key = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Value = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Scope = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Global"),
+                    UpdatedBy = table.Column<int>(type: "int", nullable: true),
+                    UpdatedDate = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
                 },
                 constraints: table =>
                 {
@@ -536,60 +410,51 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Waitlist",
+                name: "LeaveImpact",
                 columns: table => new
                 {
-                    WaitID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false),
-                    ProviderID = table.Column<int>(type: "INTEGER", nullable: false),
-                    ServiceID = table.Column<int>(type: "INTEGER", nullable: false),
-                    PatientID = table.Column<int>(type: "INTEGER", nullable: false),
-                    Priority = table.Column<string>(type: "TEXT", maxLength: 10, nullable: false, defaultValue: "Normal"),
-                    RequestedDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Open")
+                    ImpactID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    LeaveID = table.Column<int>(type: "int", nullable: false),
+                    ImpactType = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
+                    ImpactJSON = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ResolvedBy = table.Column<int>(type: "int", nullable: true),
+                    ResolvedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Open")
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK__Waitlist__815F96AC4369AB39", x => x.WaitID);
+                    table.PrimaryKey("PK__LeaveImp__2297C5DD3AFBF3F9", x => x.ImpactID);
                     table.ForeignKey(
-                        name: "FK__Waitlist__Patien__5F7E2DAC",
-                        column: x => x.PatientID,
+                        name: "FK__LeaveImpa__Leave__214BF109",
+                        column: x => x.LeaveID,
+                        principalTable: "LeaveRequest",
+                        principalColumn: "LeaveID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK__LeaveImpa__Resol__2334397B",
+                        column: x => x.ResolvedBy,
                         principalTable: "User",
-                        principalColumn: "UserID");
-                    table.ForeignKey(
-                        name: "FK__Waitlist__Provid__5D95E53A",
-                        column: x => x.ProviderID,
-                        principalTable: "Provider",
-                        principalColumn: "ProviderID");
-                    table.ForeignKey(
-                        name: "FK__Waitlist__Servic__5E8A0973",
-                        column: x => x.ServiceID,
-                        principalTable: "Service",
-                        principalColumn: "ServiceID");
-                    table.ForeignKey(
-                        name: "FK__Waitlist__SiteID__5CA1C101",
-                        column: x => x.SiteID,
-                        principalTable: "Site",
-                        principalColumn: "SiteID");
+                        principalColumn: "UserID",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
                 name: "Appointment",
                 columns: table => new
                 {
-                    AppointmentID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    PatientID = table.Column<int>(type: "INTEGER", nullable: false),
-                    ProviderID = table.Column<int>(type: "INTEGER", nullable: false),
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false),
-                    ServiceID = table.Column<int>(type: "INTEGER", nullable: false),
-                    RoomID = table.Column<int>(type: "INTEGER", nullable: true),
-                    SlotDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    StartTime = table.Column<TimeOnly>(type: "TEXT", nullable: false),
-                    EndTime = table.Column<TimeOnly>(type: "TEXT", nullable: false),
-                    BookingChannel = table.Column<string>(type: "TEXT", maxLength: 30, nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Booked")
+                    AppointmentID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    PatientID = table.Column<int>(type: "int", nullable: false),
+                    ProviderID = table.Column<int>(type: "int", nullable: false),
+                    SiteID = table.Column<int>(type: "int", nullable: false),
+                    ServiceID = table.Column<int>(type: "int", nullable: false),
+                    RoomID = table.Column<int>(type: "int", nullable: true),
+                    SlotDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    StartTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    EndTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    BookingChannel = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Booked")
                 },
                 constraints: table =>
                 {
@@ -623,19 +488,79 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AvailabilityBlock",
+                columns: table => new
+                {
+                    BlockID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ProviderID = table.Column<int>(type: "int", nullable: false),
+                    SiteID = table.Column<int>(type: "int", nullable: false),
+                    Date = table.Column<DateOnly>(type: "date", nullable: false),
+                    StartTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    EndTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    Reason = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK__Availabi__1442151191DB61C9", x => x.BlockID);
+                    table.ForeignKey(
+                        name: "FK__Availabil__Provi__3C34F16F",
+                        column: x => x.ProviderID,
+                        principalTable: "Provider",
+                        principalColumn: "ProviderID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK__Availabil__SiteI__3D2915A8",
+                        column: x => x.SiteID,
+                        principalTable: "Site",
+                        principalColumn: "SiteID");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AvailabilityTemplate",
+                columns: table => new
+                {
+                    TemplateID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ProviderID = table.Column<int>(type: "int", nullable: false),
+                    SiteID = table.Column<int>(type: "int", nullable: false),
+                    DayOfWeek = table.Column<byte>(type: "tinyint", nullable: false),
+                    StartTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    EndTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    SlotDurationMin = table.Column<int>(type: "int", nullable: false, defaultValue: 15),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK__Availabi__F87ADD0781DF26FF", x => x.TemplateID);
+                    table.ForeignKey(
+                        name: "FK__Availabil__Provi__3493CFA7",
+                        column: x => x.ProviderID,
+                        principalTable: "Provider",
+                        principalColumn: "ProviderID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK__Availabil__SiteI__3587F3E0",
+                        column: x => x.SiteID,
+                        principalTable: "Site",
+                        principalColumn: "SiteID");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "CalendarEvent",
                 columns: table => new
                 {
-                    EventID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    EntityType = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    EntityID = table.Column<int>(type: "INTEGER", nullable: false),
-                    ProviderID = table.Column<int>(type: "INTEGER", nullable: true),
-                    SiteID = table.Column<int>(type: "INTEGER", nullable: false),
-                    RoomID = table.Column<int>(type: "INTEGER", nullable: true),
-                    StartTime = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    EndTime = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Active")
+                    EventID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EntityType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    EntityID = table.Column<int>(type: "int", nullable: false),
+                    ProviderID = table.Column<int>(type: "int", nullable: true),
+                    SiteID = table.Column<int>(type: "int", nullable: false),
+                    RoomID = table.Column<int>(type: "int", nullable: true),
+                    StartTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EndTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
                 },
                 constraints: table =>
                 {
@@ -660,47 +585,120 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "LeaveImpact",
+                name: "ProviderService",
                 columns: table => new
                 {
-                    ImpactID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    LeaveID = table.Column<int>(type: "INTEGER", nullable: false),
-                    ImpactType = table.Column<string>(type: "TEXT", maxLength: 30, nullable: false),
-                    ImpactJSON = table.Column<string>(type: "TEXT", nullable: true),
-                    ResolvedBy = table.Column<int>(type: "INTEGER", nullable: true),
-                    ResolvedDate = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Open")
+                    PSID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ProviderID = table.Column<int>(type: "int", nullable: false),
+                    ServiceID = table.Column<int>(type: "int", nullable: false),
+                    CustomDurationMin = table.Column<int>(type: "int", nullable: true),
+                    CustomBufferBeforeMin = table.Column<int>(type: "int", nullable: true),
+                    CustomBufferAfterMin = table.Column<int>(type: "int", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Active")
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK__LeaveImp__2297C5DD3AFBF3F9", x => x.ImpactID);
+                    table.PrimaryKey("PK__Provider__BC00097697A34DEC", x => x.PSID);
                     table.ForeignKey(
-                        name: "FK__LeaveImpa__Leave__214BF109",
-                        column: x => x.LeaveID,
-                        principalTable: "LeaveRequest",
-                        principalColumn: "LeaveID",
+                        name: "FK__ProviderS__Provi__2EDAF651",
+                        column: x => x.ProviderID,
+                        principalTable: "Provider",
+                        principalColumn: "ProviderID",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK__LeaveImpa__Resol__2334397B",
-                        column: x => x.ResolvedBy,
+                        name: "FK__ProviderS__Servi__2FCF1A8A",
+                        column: x => x.ServiceID,
+                        principalTable: "Service",
+                        principalColumn: "ServiceID");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PublishedSlot",
+                columns: table => new
+                {
+                    PubSlotID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ProviderID = table.Column<int>(type: "int", nullable: false),
+                    SiteID = table.Column<int>(type: "int", nullable: false),
+                    ServiceID = table.Column<int>(type: "int", nullable: false),
+                    SlotDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    StartTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    EndTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Open")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK__Publishe__3CFE843623B80371", x => x.PubSlotID);
+                    table.ForeignKey(
+                        name: "FK__Published__Provi__46B27FE2",
+                        column: x => x.ProviderID,
+                        principalTable: "Provider",
+                        principalColumn: "ProviderID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK__Published__Servi__489AC854",
+                        column: x => x.ServiceID,
+                        principalTable: "Service",
+                        principalColumn: "ServiceID");
+                    table.ForeignKey(
+                        name: "FK__Published__SiteI__47A6A41B",
+                        column: x => x.SiteID,
+                        principalTable: "Site",
+                        principalColumn: "SiteID");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Waitlist",
+                columns: table => new
+                {
+                    WaitID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SiteID = table.Column<int>(type: "int", nullable: false),
+                    ProviderID = table.Column<int>(type: "int", nullable: false),
+                    ServiceID = table.Column<int>(type: "int", nullable: false),
+                    PatientID = table.Column<int>(type: "int", nullable: false),
+                    Priority = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false, defaultValue: "Normal"),
+                    RequestedDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Open")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK__Waitlist__815F96AC4369AB39", x => x.WaitID);
+                    table.ForeignKey(
+                        name: "FK__Waitlist__Patien__5F7E2DAC",
+                        column: x => x.PatientID,
                         principalTable: "User",
-                        principalColumn: "UserID",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "UserID");
+                    table.ForeignKey(
+                        name: "FK__Waitlist__Provid__5D95E53A",
+                        column: x => x.ProviderID,
+                        principalTable: "Provider",
+                        principalColumn: "ProviderID");
+                    table.ForeignKey(
+                        name: "FK__Waitlist__Servic__5E8A0973",
+                        column: x => x.ServiceID,
+                        principalTable: "Service",
+                        principalColumn: "ServiceID");
+                    table.ForeignKey(
+                        name: "FK__Waitlist__SiteID__5CA1C101",
+                        column: x => x.SiteID,
+                        principalTable: "Site",
+                        principalColumn: "SiteID");
                 });
 
             migrationBuilder.CreateTable(
                 name: "RosterAssignment",
                 columns: table => new
                 {
-                    AssignmentID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    RosterID = table.Column<int>(type: "INTEGER", nullable: false),
-                    UserID = table.Column<int>(type: "INTEGER", nullable: false),
-                    ShiftTemplateID = table.Column<int>(type: "INTEGER", nullable: false),
-                    Date = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    Role = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Assigned")
+                    AssignmentID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RosterID = table.Column<int>(type: "int", nullable: false),
+                    UserID = table.Column<int>(type: "int", nullable: false),
+                    ShiftTemplateID = table.Column<int>(type: "int", nullable: false),
+                    Date = table.Column<DateOnly>(type: "date", nullable: false),
+                    Role = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Assigned")
                 },
                 constraints: table =>
                 {
@@ -727,15 +725,15 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "AppointmentChange",
                 columns: table => new
                 {
-                    ChangeID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    AppointmentID = table.Column<int>(type: "INTEGER", nullable: false),
-                    ChangeType = table.Column<string>(type: "TEXT", maxLength: 30, nullable: false),
-                    OldValuesJSON = table.Column<string>(type: "TEXT", nullable: true),
-                    NewValuesJSON = table.Column<string>(type: "TEXT", nullable: true),
-                    ChangedBy = table.Column<int>(type: "INTEGER", nullable: true),
-                    ChangedDate = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "(getdate())"),
-                    Reason = table.Column<string>(type: "TEXT", maxLength: 255, nullable: true)
+                    ChangeID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    AppointmentID = table.Column<int>(type: "int", nullable: false),
+                    ChangeType = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
+                    OldValuesJSON = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    NewValuesJSON = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ChangedBy = table.Column<int>(type: "int", nullable: true),
+                    ChangedDate = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())"),
+                    Reason = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -758,14 +756,14 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "ChargeRef",
                 columns: table => new
                 {
-                    ChargeRefID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    AppointmentID = table.Column<int>(type: "INTEGER", nullable: false),
-                    ServiceID = table.Column<int>(type: "INTEGER", nullable: false),
-                    ProviderID = table.Column<int>(type: "INTEGER", nullable: false),
-                    Amount = table.Column<decimal>(type: "decimal(10, 2)", nullable: false),
-                    Currency = table.Column<string>(type: "TEXT", unicode: false, fixedLength: true, maxLength: 3, nullable: false, defaultValue: "INR"),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Open")
+                    ChargeRefID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    AppointmentID = table.Column<int>(type: "int", nullable: false),
+                    ServiceID = table.Column<int>(type: "int", nullable: false),
+                    ProviderID = table.Column<int>(type: "int", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    Currency = table.Column<string>(type: "char(3)", unicode: false, fixedLength: true, maxLength: 3, nullable: false, defaultValue: "INR"),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Open")
                 },
                 constraints: table =>
                 {
@@ -791,13 +789,13 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "CheckIn",
                 columns: table => new
                 {
-                    CheckInID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    AppointmentID = table.Column<int>(type: "INTEGER", nullable: false),
-                    TokenNo = table.Column<string>(type: "TEXT", maxLength: 20, nullable: true),
-                    CheckInTime = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "(getdate())"),
-                    RoomAssigned = table.Column<int>(type: "INTEGER", nullable: true),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Waiting")
+                    CheckInID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    AppointmentID = table.Column<int>(type: "int", nullable: false),
+                    TokenNo = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    CheckInTime = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())"),
+                    RoomAssigned = table.Column<int>(type: "int", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Waiting")
                 },
                 constraints: table =>
                 {
@@ -820,13 +818,13 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "Outcome",
                 columns: table => new
                 {
-                    OutcomeID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    AppointmentID = table.Column<int>(type: "INTEGER", nullable: false),
-                    Outcome = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    Notes = table.Column<string>(type: "TEXT", nullable: true),
-                    MarkedBy = table.Column<int>(type: "INTEGER", nullable: true),
-                    MarkedDate = table.Column<DateTime>(type: "TEXT", nullable: false, defaultValueSql: "(getdate())")
+                    OutcomeID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    AppointmentID = table.Column<int>(type: "int", nullable: false),
+                    Outcome = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    MarkedBy = table.Column<int>(type: "int", nullable: true),
+                    MarkedDate = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
                 },
                 constraints: table =>
                 {
@@ -849,12 +847,12 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "ReminderSchedule",
                 columns: table => new
                 {
-                    RemindID = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    AppointmentID = table.Column<int>(type: "INTEGER", nullable: false),
-                    RemindOffsetMin = table.Column<int>(type: "INTEGER", nullable: false),
-                    Channel = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
-                    Status = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false, defaultValue: "Pending")
+                    RemindID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    AppointmentID = table.Column<int>(type: "int", nullable: false),
+                    RemindOffsetMin = table.Column<int>(type: "int", nullable: false),
+                    Channel = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "Pending")
                 },
                 constraints: table =>
                 {
@@ -1107,11 +1105,6 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_User_ProviderID",
-                table: "User",
-                column: "ProviderID");
-
-            migrationBuilder.CreateIndex(
                 name: "UQ__User__A9D1053460A18078",
                 table: "User",
                 column: "Email",
@@ -1223,6 +1216,9 @@ namespace CareSchedule.Infrastructure.Data.Migrations
                 name: "ShiftTemplate");
 
             migrationBuilder.DropTable(
+                name: "Provider");
+
+            migrationBuilder.DropTable(
                 name: "Room");
 
             migrationBuilder.DropTable(
@@ -1233,9 +1229,6 @@ namespace CareSchedule.Infrastructure.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "Site");
-
-            migrationBuilder.DropTable(
-                name: "Provider");
         }
     }
 }

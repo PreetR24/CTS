@@ -17,8 +17,6 @@ public partial class User
 
     public string Status { get; set; } = null!;
 
-    public int? ProviderId { get; set; }
-
     public virtual Provider? Provider { get; set; }
 
     public virtual ICollection<AppointmentChange> AppointmentChanges { get; set; } = new List<AppointmentChange>();

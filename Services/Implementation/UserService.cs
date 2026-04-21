@@ -37,14 +37,12 @@ namespace CareSchedule.Services.Implementation
                 Role = dto.Role.Trim(),
                 Email = dto.Email.Trim(),
                 Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim(),
-                ProviderId = dto.ProviderId,
                 Status = "Active"
             };
             e = _userrepo.Create(e);
 
-            // If a provider user is created without explicit ProviderId,
-            // create a Provider row using the same numeric ID as UserId.
-            if (string.Equals(e.Role, "Provider", StringComparison.OrdinalIgnoreCase) && !e.ProviderId.HasValue)
+            // If a provider user is created, create a Provider row using the same numeric ID as UserId.
+            if (string.Equals(e.Role, "Provider", StringComparison.OrdinalIgnoreCase))
             {
                 var provider = new Provider
                 {
@@ -56,8 +54,6 @@ namespace CareSchedule.Services.Implementation
                 };
 
                 _providerRepo.CreateWithId(provider, e.UserId);
-                e.ProviderId = e.UserId;
-                _userrepo.Update(e);
             }
 
             return Map(e);
@@ -72,8 +68,6 @@ namespace CareSchedule.Services.Implementation
             if (!string.IsNullOrWhiteSpace(dto.Role)) e.Role = dto.Role.Trim();
             if (!string.IsNullOrWhiteSpace(dto.Email)) e.Email = dto.Email.Trim();
             if (dto.Phone is not null) e.Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim();
-            if (dto.ProviderId.HasValue) e.ProviderId = dto.ProviderId;
-
             _userrepo.Update(e);
             return Map(e);
         }
@@ -111,6 +105,42 @@ namespace CareSchedule.Services.Implementation
             e.Status = "Active";
             _userrepo.Update(e);
         }
+
+        public async Task<MeResponseDto> GetMeAsync(int userId)
+        {
+            if (userId <= 0)
+                throw new ArgumentException("Invalid userId.");
+
+            var user = await _userrepo.GetByIdAsync(userId);
+            if (user is null)
+                throw new KeyNotFoundException("User not found.");
+
+            if (string.Equals(user.Status, "Inactive", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("User is inactive.");
+            if (string.Equals(user.Status, "Locked", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("User account is locked.");
+
+            return new MeResponseDto
+            {
+                UserId = user.UserId,
+                Name = user.Name,
+                Role = user.Role,
+                Email = user.Email,
+                LandingPage = ResolveLandingPage(user.Role)
+            };
+        }
+
+        private static string ResolveLandingPage(string role) =>
+            role switch
+            {
+                "Admin" => "/admin",
+                "Provider" => "/provider",
+                "FrontDesk" => "/frontdesk",
+                "Nurse" => "/staff",
+                "Patient" => "/patient",
+                "Operations" => "/operations",
+                _ => "/"
+            };
         
         private static UserDto Map(User u) => new()
         {
@@ -119,8 +149,7 @@ namespace CareSchedule.Services.Implementation
             Role = u.Role,
             Email = u.Email,
             Phone = u.Phone,
-            Status = u.Status,
-            ProviderId = u.ProviderId
+            Status = u.Status
         };
     }
 }

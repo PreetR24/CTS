@@ -20,7 +20,7 @@ namespace CareSchedule.API.Controllers
         [Authorize]
         public ActionResult<ApiResponse<UserDto>> Get(int id)
         {
-            if (!User.IsAdmin() && !User.IsSelf(id))
+            if (!User.IsAdmin() && User.GetUserId() != id)
                 return StatusCode(403, ApiResponse<object>.Fail(
                     new { code = "ROLE_FORBIDDEN" }, "You can only view your own profile."));
 
