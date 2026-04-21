@@ -20,7 +20,6 @@ namespace CareSchedule.Services.Implementation
             IAuditLogService _auditService,
             IAvailabilityBlockRepository _blockRepo,
             ICalendarEventRepository _calendarRepo,
-            IUserRepository _userRepo,
             IProviderRepository _providerRepo,
             IUnitOfWork _uow) : ILeaveService
     {

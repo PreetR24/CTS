@@ -13,6 +13,8 @@ namespace CareSchedule.DTOs
     public class ProviderCreateDto
     {
         public string Name { get; set; } = default!;
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
         public string? Specialty { get; set; }
         public string? Credentials { get; set; }
         public string? ContactInfo { get; set; }
@@ -21,6 +23,8 @@ namespace CareSchedule.DTOs
     public class ProviderUpdateDto
     {
         public string? Name { get; set; }
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
         public string? Specialty { get; set; }
         public string? Credentials { get; set; }
         public string? ContactInfo { get; set; }

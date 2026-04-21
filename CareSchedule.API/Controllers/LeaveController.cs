@@ -64,9 +64,17 @@ namespace CareSchedule.API.Controllers
         }
 
         [HttpGet("{leaveId:int}/impacts")]
-        [Authorize(Roles = "Operations,Admin")]
         public ActionResult<ApiResponse<IEnumerable<LeaveImpactResponseDto>>> GetImpacts(int leaveId)
         {
+            var leave = _leaveservice.GetById(leaveId);
+            if (!User.IsAdmin() &&
+                !string.Equals(User.GetRole(), "Operations", StringComparison.OrdinalIgnoreCase) &&
+                leave.UserId != User.GetUserId())
+            {
+                return StatusCode(403, ApiResponse<object>.Fail(
+                    new { code = "ROLE_FORBIDDEN" }, "You can only view impacts for your own leave."));
+            }
+
             var list = _leaveservice.GetImpactsByLeaveId(leaveId);
             return ApiResponse<IEnumerable<LeaveImpactResponseDto>>.Ok(list, "Leave impacts fetched.");
         }

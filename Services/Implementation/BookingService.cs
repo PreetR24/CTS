@@ -478,9 +478,13 @@ namespace CareSchedule.Services.Implementation
             {
                 AppointmentId = a.AppointmentId,
                 PatientId = a.PatientId,
+                PatientName = a.Patient?.Name,
                 ProviderId = a.ProviderId,
+                ProviderName = a.Provider?.Name,
                 SiteId = a.SiteId,
+                SiteName = a.Site?.Name,
                 ServiceId = a.ServiceId,
+                ServiceName = a.Service?.Name,
                 SlotDate = a.SlotDate,
                 StartTime = a.StartTime.ToString("HH:mm"),
                 EndTime = a.EndTime.ToString("HH:mm"),

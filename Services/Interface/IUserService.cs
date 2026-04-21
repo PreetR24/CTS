@@ -12,8 +12,6 @@ namespace CareSchedule.Services.Interface
         UserDto UpdateUser(int id, UserUpdateDto dto);
         void DeactivateUser(int id);
         void ActivateUser(int id);
-        void LockUser(int id);
-        void UnlockUser(int id);
         Task<MeResponseDto> GetMeAsync(int userId);
     }
 }

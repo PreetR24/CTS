@@ -17,9 +17,13 @@ namespace CareSchedule.DTOs
     {
         public int AppointmentId { get; set; }
         public int PatientId { get; set; }
+        public string? PatientName { get; set; }
         public int ProviderId { get; set; }
+        public string? ProviderName { get; set; }
         public int SiteId { get; set; }
+        public string? SiteName { get; set; }
         public int ServiceId { get; set; }
+        public string? ServiceName { get; set; }
         public DateOnly SlotDate { get; set; }
         public string StartTime { get; set; } = ""; // "HH:mm"
         public string EndTime { get; set; } = "";   // "HH:mm"

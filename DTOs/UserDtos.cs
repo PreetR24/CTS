@@ -24,6 +24,7 @@ namespace CareSchedule.DTOs
         public string? Role { get; set; }
         public string? Email { get; set; }
         public string? Phone { get; set; }
+        public string? RequesterRole { get; set; }
     }
 
     public class UserSearchQuery

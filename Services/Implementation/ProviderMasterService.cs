@@ -7,6 +7,7 @@ namespace CareSchedule.Services.Implementation
 {
     public class ProviderMasterService(
         IProviderRepository _providerrepo,
+        IUserRepository _userRepo,
         IAuditLogService _auditService,
         IAvailabilityTemplateRepository _templateRepo,
         IAppointmentRepository _appointmentRepo) : IProviderMasterService
@@ -28,16 +29,33 @@ namespace CareSchedule.Services.Implementation
             if (string.IsNullOrWhiteSpace(dto.Name))
                 throw new ArgumentException("Provider name is required.");
 
+            var email = string.IsNullOrWhiteSpace(dto.Email)
+                ? BuildGeneratedProviderEmail(dto.Name)
+                : dto.Email.Trim();
+            var contactInfo = string.IsNullOrWhiteSpace(dto.ContactInfo)
+                ? email
+                : dto.ContactInfo.Trim();
+
+            var providerUser = _userRepo.Create(new User
+            {
+                Name = dto.Name.Trim(),
+                Role = "Provider",
+                Email = email,
+                Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim(),
+                Status = "Active"
+            });
+
             var entity = new Provider
             {
+                ProviderId = providerUser.UserId,
                 Name = dto.Name.Trim(),
                 Specialty = dto.Specialty?.Trim(),
                 Credentials = dto.Credentials?.Trim(),
-                ContactInfo = dto.ContactInfo?.Trim(),
+                ContactInfo = contactInfo,
                 Status = "Active"
             };
 
-            entity = _providerrepo.Create(entity);
+            entity = _providerrepo.CreateWithId(entity, providerUser.UserId);
 
             _auditService.CreateAudit(new AuditLogCreateDto
             {
@@ -134,5 +152,22 @@ namespace CareSchedule.Services.Implementation
             ContactInfo = p.ContactInfo,
             Status = p.Status
         };
+
+        private static string BuildGeneratedProviderEmail(string name)
+        {
+            var normalized = new string(
+                (name ?? "provider")
+                    .ToLowerInvariant()
+                    .Select(ch => char.IsLetterOrDigit(ch) ? ch : '.')
+                    .ToArray()
+            ).Trim('.');
+
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                normalized = "provider";
+            }
+
+            return $"{normalized}.{DateTime.UtcNow.Ticks}@careschedule.local";
+        }
     }
 }

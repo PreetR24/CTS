@@ -86,26 +86,6 @@ namespace CareSchedule.Services.Implementation
             if (e.Status != "Active") { e.Status = "Active"; _userrepo.Update(e); }
         }
 
-        public void LockUser(int id)
-        {
-            var e = _userrepo.Get(id);
-            if (e is null) throw new KeyNotFoundException("User not found.");
-            if (string.Equals(e.Status, "Locked", StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException("User is already locked.");
-            e.Status = "Locked";
-            _userrepo.Update(e);
-        }
-
-        public void UnlockUser(int id)
-        {
-            var e = _userrepo.Get(id);
-            if (e is null) throw new KeyNotFoundException("User not found.");
-            if (!string.Equals(e.Status, "Locked", StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException("User is not locked.");
-            e.Status = "Active";
-            _userrepo.Update(e);
-        }
-
         public async Task<MeResponseDto> GetMeAsync(int userId)
         {
             if (userId <= 0)
@@ -117,9 +97,6 @@ namespace CareSchedule.Services.Implementation
 
             if (string.Equals(user.Status, "Inactive", StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException("User is inactive.");
-            if (string.Equals(user.Status, "Locked", StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException("User account is locked.");
-
             return new MeResponseDto
             {
                 UserId = user.UserId,

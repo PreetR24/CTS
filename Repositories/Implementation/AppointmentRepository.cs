@@ -4,6 +4,7 @@ using System.Linq;
 using CareSchedule.Models;
 using CareSchedule.Infrastructure.Data;
 using CareSchedule.Repositories.Interface;
+using Microsoft.EntityFrameworkCore;
 
 namespace CareSchedule.Repositories.Implementation
 {
@@ -14,12 +15,22 @@ namespace CareSchedule.Repositories.Implementation
 
         public Appointment? GetById(int appointmentId)
         {
-            return _db.Appointments.FirstOrDefault(a => a.AppointmentId == appointmentId);
+            return _db.Appointments
+                .Include(a => a.Patient)
+                .Include(a => a.Provider)
+                .Include(a => a.Service)
+                .Include(a => a.Site)
+                .FirstOrDefault(a => a.AppointmentId == appointmentId);
         }
 
         public IEnumerable<Appointment> Search(int? patientId, int? providerId, int? siteId, DateOnly? date, string? status)
         {
-            var q = _db.Appointments.AsQueryable();
+            var q = _db.Appointments
+                .Include(a => a.Patient)
+                .Include(a => a.Provider)
+                .Include(a => a.Service)
+                .Include(a => a.Site)
+                .AsQueryable();
 
             if (patientId.HasValue) q = q.Where(a => a.PatientId == patientId.Value);
             if (providerId.HasValue) q = q.Where(a => a.ProviderId == providerId.Value);
