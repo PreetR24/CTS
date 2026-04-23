@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CareSchedule.DTOs;
-using CareSchedule.Infrastructure;
+using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
@@ -11,7 +11,7 @@ namespace CareSchedule.Services.Implementation
 {
     public class NotificationService(
             INotificationRepository _notifRepo,
-            IUnitOfWork _uow) : INotificationService
+            CareScheduleContext _db) : INotificationService
     {
         public IEnumerable<NotificationResponseDto> GetByUserId(int userId)
         {
@@ -32,7 +32,7 @@ namespace CareSchedule.Services.Implementation
             if (entity == null) throw new KeyNotFoundException($"Notification {notificationId} not found.");
             entity.Status = "Read";
             _notifRepo.Update(entity);
-            _uow.SaveChanges();
+            _db.SaveChanges();
         }
 
         public void Dismiss(int notificationId)
@@ -41,7 +41,7 @@ namespace CareSchedule.Services.Implementation
             if (entity == null) throw new KeyNotFoundException($"Notification {notificationId} not found.");
             entity.Status = "Dismissed";
             _notifRepo.Update(entity);
-            _uow.SaveChanges();
+            _db.SaveChanges();
         }
 
         public void Create(int userId, string message, string category)
@@ -55,7 +55,7 @@ namespace CareSchedule.Services.Implementation
                 CreatedDate = DateTime.UtcNow
             };
             _notifRepo.Add(entity);
-            _uow.SaveChanges();
+            _db.SaveChanges();
         }
 
         private static NotificationResponseDto Map(Notification n) => new()

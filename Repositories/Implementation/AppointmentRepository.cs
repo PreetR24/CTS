@@ -20,6 +20,7 @@ namespace CareSchedule.Repositories.Implementation
                 .Include(a => a.Provider)
                 .Include(a => a.Service)
                 .Include(a => a.Site)
+                .Include(a => a.Room)
                 .FirstOrDefault(a => a.AppointmentId == appointmentId);
         }
 
@@ -30,6 +31,7 @@ namespace CareSchedule.Repositories.Implementation
                 .Include(a => a.Provider)
                 .Include(a => a.Service)
                 .Include(a => a.Site)
+                .Include(a => a.Room)
                 .AsQueryable();
 
             if (patientId.HasValue) q = q.Where(a => a.PatientId == patientId.Value);

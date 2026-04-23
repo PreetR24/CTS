@@ -5,7 +5,7 @@ using CareSchedule.Models;
 using CareSchedule.Services.Interface;
 using CareSchedule.DTOs;
 using CareSchedule.Repositories.Interface;
-using CareSchedule.Infrastructure;
+using CareSchedule.Infrastructure.Data;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -34,7 +34,7 @@ namespace CareSchedule.Services.Implementation
             IProviderServiceRepository _providerServiceRepo,
             IBlackoutRepository _blackoutRepo,
             IHolidayRepository _holidayRepo,
-            IUnitOfWork _uow)
+            CareScheduleContext _db)
             : IAvailabilityService
     {
         public void EnsureSiteActive(int siteId)
@@ -87,6 +87,7 @@ namespace CareSchedule.Services.Implementation
             EnsureProviderActive(dto.ProviderId);
             EnsureSiteActive(dto.SiteId);
             ValidateTemplateDto(dto);
+            EnsureNoTemplateOverlap(dto.ProviderId, dto.SiteId, dto.DayOfWeek, dto.StartTime, dto.EndTime, null);
 
             var entity = new AvailabilityTemplate
             {
@@ -110,14 +111,14 @@ namespace CareSchedule.Services.Implementation
                     entity.ProviderId,
                     entity.SiteId,
                     entity.DayOfWeek,
-                    Start = entity.StartTime.ToString(@"hh\:mm"),
-                    End   = entity.EndTime.ToString(@"hh\:mm"),
+                    Start = entity.StartTime.ToString(@"HH\:mm"),
+                    End   = entity.EndTime.ToString(@"HH\:mm"),
                     entity.SlotDurationMin,
                     entity.Status
                 })
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return entity.TemplateId; // populated by EF on SaveChanges
         }
 
@@ -129,6 +130,7 @@ namespace CareSchedule.Services.Implementation
             EnsureSiteActive(dto.SiteId);
 
             ValidateTemplateDto(dto);
+            EnsureNoTemplateOverlap(dto.ProviderId, dto.SiteId, dto.DayOfWeek, dto.StartTime, dto.EndTime, dto.TemplateId);
 
             var entity = _templateRepo.GetById(dto.TemplateId);
             if (entity == null) throw new KeyNotFoundException("Template not found.");
@@ -138,8 +140,8 @@ namespace CareSchedule.Services.Implementation
                 entity.ProviderId,
                 entity.SiteId,
                 entity.DayOfWeek,
-                Start = entity.StartTime.ToString(@"hh\:mm"),
-                End   = entity.EndTime.ToString(@"hh\:mm"),
+                Start = entity.StartTime.ToString(@"HH\:mm"),
+                End   = entity.EndTime.ToString(@"HH\:mm"),
                 entity.SlotDurationMin,
                 entity.Status
             };
@@ -159,8 +161,8 @@ namespace CareSchedule.Services.Implementation
                 entity.ProviderId,
                 entity.SiteId,
                 entity.DayOfWeek,
-                Start = entity.StartTime.ToString(@"hh\:mm"),
-                End   = entity.EndTime.ToString(@"hh\:mm"),
+                Start = entity.StartTime.ToString(@"HH\:mm"),
+                End   = entity.EndTime.ToString(@"HH\:mm"),
                 entity.SlotDurationMin,
                 entity.Status
             };
@@ -177,7 +179,7 @@ namespace CareSchedule.Services.Implementation
                 })
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
         }
 
         public IEnumerable<AvailabilityTemplateResponseDto> ListTemplates(int providerId, int siteId)
@@ -192,8 +194,8 @@ namespace CareSchedule.Services.Implementation
                 ProviderId      = t.ProviderId,
                 SiteId          = t.SiteId,
                 DayOfWeek       = t.DayOfWeek,
-                StartTime       = t.StartTime.ToString(@"hh\:mm"),
-                EndTime         = t.EndTime.ToString(@"hh\:mm"),
+                StartTime       = t.StartTime.ToString(@"HH\:mm"),
+                EndTime         = t.EndTime.ToString(@"HH\:mm"),
                 SlotDurationMin = t.SlotDurationMin,
                 Status          = t.Status
             }).ToList();
@@ -214,6 +216,8 @@ namespace CareSchedule.Services.Implementation
             var start = ParseTimeOnly(dto.StartTime); // TimeOnly
             var end   = ParseTimeOnly(dto.EndTime);   // TimeOnly
             if (end <= start) throw new ArgumentException("EndTime must be after StartTime.");
+            if (date < DateOnly.FromDateTime(DateTime.UtcNow.Date))
+                throw new ArgumentException("Cannot create availability block for a past date.");
 
             // ---------- 1) Strict overlap rejection (no merge) ----------
             var sameDayActiveBlocks = _blockRepo
@@ -260,7 +264,7 @@ namespace CareSchedule.Services.Implementation
             });
 
             // First commit to obtain BlockID for CalendarEvent projection
-            _uow.SaveChanges();
+            _db.SaveChanges();
 
             // ---------- 3) Close overlapping Open/Held slots (end-exclusive) ----------
             var overlappingSlots = _slotRepo.FindSlotsInWindow(
@@ -304,7 +308,7 @@ namespace CareSchedule.Services.Implementation
                 })
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return block.BlockId;
         }
 
@@ -333,7 +337,70 @@ namespace CareSchedule.Services.Implementation
                 Metadata  = SerializeJson(new { blockId, previousStatus = prev })
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
+        }
+
+        public void ActivateBlock(int blockId)
+        {
+            if (blockId <= 0) throw new ArgumentException("Invalid BlockID.");
+
+            var block = _blockRepo.GetById(blockId);
+            if (block == null) throw new KeyNotFoundException("Block not found.");
+
+            EnsureProviderActive(block.ProviderId);
+            EnsureSiteActive(block.SiteId);
+
+            if (string.Equals(block.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var sameDayActiveBlocks = _blockRepo
+                .List(block.ProviderId, block.SiteId, block.Date)
+                .Where(b =>
+                    b.BlockId != block.BlockId &&
+                    string.Equals(b.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var overlaps = sameDayActiveBlocks.Any(b => b.StartTime < block.EndTime && block.StartTime < b.EndTime);
+            if (overlaps)
+                throw new ArgumentException("Cannot activate this block because it overlaps another active block.");
+
+            block.Status = "Active";
+            _blockRepo.Update(block);
+
+            var startDt = CombineUtc(block.Date, block.StartTime);
+            var endDt = CombineUtc(block.Date, block.EndTime);
+            _calendarRepo.Add(new CalendarEvent
+            {
+                EntityType = "Block",
+                EntityId = block.BlockId,
+                ProviderId = block.ProviderId,
+                SiteId = block.SiteId,
+                RoomId = null,
+                StartTime = startDt,
+                EndTime = endDt,
+                Status = "Active"
+            });
+
+            var overlappingSlots = _slotRepo.FindSlotsInWindow(
+                block.ProviderId, block.SiteId, block.Date, block.StartTime, block.EndTime, "Open", "Held");
+            foreach (var s in overlappingSlots)
+            {
+                s.Status = "Closed";
+                _slotRepo.Update(s);
+            }
+
+            _auditService.CreateAudit(new AuditLogCreateDto
+            {
+                Action = "ActivateAvailabilityBlock",
+                Resource = "AvailabilityBlock",
+                Metadata = SerializeJson(new
+                {
+                    blockId = block.BlockId,
+                    providerId = block.ProviderId,
+                    siteId = block.SiteId
+                })
+            });
+
+            _db.SaveChanges();
         }
 
         public IEnumerable<AvailabilityBlockResponseDto> ListBlocks(int providerId, int siteId, string? date)
@@ -355,8 +422,8 @@ namespace CareSchedule.Services.Implementation
                 ProviderId= b.ProviderId,
                 SiteId    = b.SiteId,
                 Date      = b.Date.ToString("yyyy-MM-dd"),
-                StartTime = b.StartTime.ToString(@"hh\:mm"),
-                EndTime   = b.EndTime.ToString(@"hh\:mm"),
+                StartTime = b.StartTime.ToString(@"HH\:mm"),
+                EndTime   = b.EndTime.ToString(@"HH\:mm"),
                 Reason    = b.Reason ?? string.Empty,
                 Status    = b.Status
             }).ToList();
@@ -388,8 +455,8 @@ namespace CareSchedule.Services.Implementation
                 ServiceId  = s.ServiceId,
                 SiteId     = s.SiteId,
                 SlotDate   = s.SlotDate.ToString("yyyy-MM-dd"),
-                StartTime  = s.StartTime.ToString(@"hh\:mm"),
-                EndTime    = s.EndTime.ToString(@"hh\:mm"),
+                StartTime  = s.StartTime.ToString(@"HH\:mm"),
+                EndTime    = s.EndTime.ToString(@"HH\:mm"),
                 Status     = s.Status
             }).ToList();
         }
@@ -421,7 +488,7 @@ namespace CareSchedule.Services.Implementation
             };
 
             _blackoutRepo.Add(entity);
-            _uow.SaveChanges();
+            _db.SaveChanges();
 
             var slotsToClose = _slotRepo.FindBySiteDateRange(dto.SiteId, startDate, endDate, "Open", "Held");
             foreach (var s in slotsToClose)
@@ -462,7 +529,7 @@ namespace CareSchedule.Services.Implementation
                 })
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
 
             return MapBlackout(entity);
         }
@@ -488,7 +555,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = SerializeJson(new { blackoutId })
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
         }
 
         public IEnumerable<BlackoutResponseDto> ListBlackouts(int siteId, string? startDate, string? endDate)
@@ -599,7 +666,7 @@ namespace CareSchedule.Services.Implementation
                     })
                 });
 
-                _uow.SaveChanges();
+                _db.SaveChanges();
                 return new ProviderSlotGenerationResponseDto
                 {
                     InsertedCount = 0,
@@ -639,7 +706,7 @@ namespace CareSchedule.Services.Implementation
                 })
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return new ProviderSlotGenerationResponseDto
             {
                 InsertedCount = candidates.Count,
@@ -686,6 +753,9 @@ namespace CareSchedule.Services.Implementation
 
                 foreach (var t in todaysTemplates)
                 {
+                    var activeBlocksForDay = _blockRepo.List(t.ProviderId, t.SiteId, day)
+                        .Where(b => string.Equals(b.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
                     // NEW: load active services for this provider
                     var services = _providerServiceRepo.GetActiveByProvider(t.ProviderId).ToList();
                     if (services.Count == 0)
@@ -701,6 +771,13 @@ namespace CareSchedule.Services.Implementation
                         {
                             var next = current.AddMinutes(t.SlotDurationMin);
                             if (next > t.EndTime) break;
+                            var blocked = activeBlocksForDay.Any(b => b.StartTime < next && current < b.EndTime);
+                            if (blocked)
+                            {
+                                skipped++;
+                                current = next;
+                                continue;
+                            }
 
                             // Idempotency: also compare ServiceId now
                             var overlaps = _slotRepo.FindSlotsInWindow(t.ProviderId, t.SiteId, day, current, next,
@@ -747,7 +824,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata  = SerializeJson(new { dto.SiteId, dto.Days, inserted, skipped })
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
 
             return new GenerateSlotsResponseDto
             {
@@ -779,6 +856,9 @@ namespace CareSchedule.Services.Implementation
                     continue;
                 if (blackouts.Any(b => b.StartDate <= day && day <= b.EndDate))
                     continue;
+                var activeBlocksForDay = _blockRepo.List(template.ProviderId, template.SiteId, day)
+                    .Where(b => string.Equals(b.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
 
                 foreach (var ps in services)
                 {
@@ -787,6 +867,12 @@ namespace CareSchedule.Services.Implementation
                     {
                         var next = current.AddMinutes(template.SlotDurationMin);
                         if (next > template.EndTime) break;
+                        var blocked = activeBlocksForDay.Any(b => b.StartTime < next && current < b.EndTime);
+                        if (blocked)
+                        {
+                            current = next;
+                            continue;
+                        }
 
                         candidates.Add(new SlotCandidate
                         {
@@ -896,6 +982,28 @@ namespace CareSchedule.Services.Implementation
             }
 
             return buckets;
+        }
+
+        private void EnsureNoTemplateOverlap(
+            int providerId,
+            int siteId,
+            int dayOfWeek,
+            string startTime,
+            string endTime,
+            int? currentTemplateId)
+        {
+            var start = ParseTimeOnly(startTime);
+            var end = ParseTimeOnly(endTime);
+            var templates = _templateRepo.List(providerId, siteId)
+                .Where(t =>
+                    t.DayOfWeek == dayOfWeek &&
+                    string.Equals(t.Status, "Active", StringComparison.OrdinalIgnoreCase) &&
+                    (!currentTemplateId.HasValue || t.TemplateId != currentTemplateId.Value))
+                .ToList();
+
+            var overlaps = templates.Any(t => t.StartTime < end && start < t.EndTime);
+            if (overlaps)
+                throw new ArgumentException("An active template already exists for this day and time range.");
         }
     }
 }

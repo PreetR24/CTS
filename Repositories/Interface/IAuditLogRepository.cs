@@ -6,6 +6,7 @@ namespace CareSchedule.Repositories.Interface
     {
         (List<AuditLog> Items, int Total) Search(
             int? userId,
+            string? userName,
             string? action,
             string? resource,
             DateTime? from,

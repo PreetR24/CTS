@@ -4,9 +4,9 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
-using CareSchedule.Infrastructure;
 
 namespace CareSchedule.API.BackgroundServices
 {
@@ -40,7 +40,7 @@ namespace CareSchedule.API.BackgroundServices
             using var scope = _scopeFactory.CreateScope();
             var reminderRepo = scope.ServiceProvider.GetRequiredService<IReminderScheduleRepository>();
             var notifRepo = scope.ServiceProvider.GetRequiredService<INotificationRepository>();
-            var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var db = scope.ServiceProvider.GetRequiredService<CareScheduleContext>();
 
             var now = DateTime.UtcNow;
             var dueReminders = reminderRepo.GetDueReminders(now);
@@ -67,7 +67,7 @@ namespace CareSchedule.API.BackgroundServices
 
             if (count > 0)
             {
-                uow.SaveChanges();
+                db.SaveChanges();
                 _logger.LogInformation("Dispatched {Count} reminder(s).", count);
             }
         }

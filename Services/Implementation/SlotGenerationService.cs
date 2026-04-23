@@ -1,5 +1,5 @@
 using CareSchedule.DTOs;
-using CareSchedule.Infrastructure;
+using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
@@ -8,6 +8,7 @@ namespace CareSchedule.Services.Implementation
 {
     public class SlotGenerationService(
         IAvailabilityTemplateRepository _templateRepo,
+        IAvailabilityBlockRepository _blockRepo,
         IPublishedSlotRepository _slotRepo,
         ISiteRepository _siteRepo,
         IProviderRepository _providerRepo,
@@ -15,7 +16,7 @@ namespace CareSchedule.Services.Implementation
         IHolidayRepository _holidayRepo,
         IBlackoutRepository _blackoutRepo,
         IAuditLogService _auditService,
-        IUnitOfWork _uow) : ISlotGenerationService
+        CareScheduleContext _db) : ISlotGenerationService
     {
         public ProviderSlotGenerationResponseDto GenerateFromTemplate(ProviderSlotGenerationRequestDto dto, int? currentProviderId, bool isAdmin)
         {
@@ -69,7 +70,7 @@ namespace CareSchedule.Services.Implementation
                         conflictCount = conflicts.Count
                     })
                 });
-                _uow.SaveChanges();
+                _db.SaveChanges();
 
                 return new ProviderSlotGenerationResponseDto
                 {
@@ -109,7 +110,7 @@ namespace CareSchedule.Services.Implementation
                     inserted = candidates.Count
                 })
             });
-            _uow.SaveChanges();
+            _db.SaveChanges();
 
             return new ProviderSlotGenerationResponseDto
             {
@@ -166,6 +167,9 @@ namespace CareSchedule.Services.Implementation
                 if ((int)day.DayOfWeek != template.DayOfWeek) continue;
                 if (holidayDates.Contains(day)) continue;
                 if (blackouts.Any(b => b.StartDate <= day && day <= b.EndDate)) continue;
+                var activeBlocksForDay = _blockRepo.List(template.ProviderId, template.SiteId, day)
+                    .Where(b => string.Equals(b.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
 
                 foreach (var providerService in services)
                 {
@@ -174,6 +178,12 @@ namespace CareSchedule.Services.Implementation
                     {
                         var next = current.AddMinutes(template.SlotDurationMin);
                         if (next > template.EndTime) break;
+                        var blocked = activeBlocksForDay.Any(b => b.StartTime < next && current < b.EndTime);
+                        if (blocked)
+                        {
+                            current = next;
+                            continue;
+                        }
 
                         candidates.Add(new SlotCandidate
                         {

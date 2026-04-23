@@ -33,7 +33,7 @@ namespace CareSchedule.Services.Implementation
                 SiteId = dto.SiteId,
                 StartTime = start,
                 EndTime = end,
-                Reason = dto.Reason?.Trim(),
+                Reason = ValidateReason(dto.Reason),
                 Status = "Active"
             };
 
@@ -75,8 +75,8 @@ namespace CareSchedule.Services.Implementation
             if (entity.EndTime <= entity.StartTime)
                 throw new ArgumentException("EndTime must be after StartTime.");
 
-            if (!string.IsNullOrWhiteSpace(dto.Reason))
-                entity.Reason = dto.Reason.Trim();
+            if (dto.Reason != null)
+                entity.Reason = ValidateReason(dto.Reason);
             if (!string.IsNullOrWhiteSpace(dto.Status))
                 entity.Status = dto.Status.Trim();
 
@@ -148,6 +148,19 @@ namespace CareSchedule.Services.Implementation
                 throw new ArgumentException($"Invalid {fieldName} format. Use yyyy-MM-dd HH:mm.");
 
             return parsed;
+        }
+
+        private static string? ValidateReason(string? reason)
+        {
+            if (reason == null) return null;
+            var trimmed = reason.Trim();
+            if (trimmed.Length == 0)
+                throw new ArgumentException("Reason cannot be empty.");
+            if (trimmed.Length < 3)
+                throw new ArgumentException("Reason must be at least 3 characters.");
+            if (trimmed.Length > 250)
+                throw new ArgumentException("Reason cannot exceed 250 characters.");
+            return trimmed;
         }
     }
 }

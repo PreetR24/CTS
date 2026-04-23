@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text.Json;
 using CareSchedule.API.Contracts;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
 namespace CareSchedule.API.Middleware
 {
@@ -37,6 +39,11 @@ namespace CareSchedule.API.Middleware
                 await WriteResponse(context, HttpStatusCode.BadRequest,
                     "BAD_REQUEST", ex.Message);
             }
+            catch (DbUpdateException ex)
+            {
+                var (status, code, message) = MapDbUpdateException(ex);
+                await WriteResponse(context, status, code, message);
+            }
             catch (Exception ex)
             {
                 var message = _env.IsDevelopment()
@@ -62,6 +69,49 @@ namespace CareSchedule.API.Middleware
             });
 
             await context.Response.WriteAsync(json);
+        }
+
+        private (HttpStatusCode status, string code, string message) MapDbUpdateException(DbUpdateException ex)
+        {
+            if (ex.InnerException is SqlException sqlEx)
+            {
+                // 2627 = violation of UNIQUE KEY constraint/PRIMARY KEY
+                // 2601 = duplicate key row in object with unique index
+                if (sqlEx.Number is 2627 or 2601)
+                {
+                    var lower = sqlEx.Message.ToLowerInvariant();
+                    if (lower.Contains("email"))
+                    {
+                        return (
+                            HttpStatusCode.Conflict,
+                            "DUPLICATE_EMAIL",
+                            "Email already exists. Please use a different email."
+                        );
+                    }
+
+                    return (
+                        HttpStatusCode.Conflict,
+                        "UNIQUE_CONSTRAINT",
+                        "Duplicate value detected. Please use a unique value."
+                    );
+                }
+
+                // 547 = foreign key / check constraint violation
+                if (sqlEx.Number == 547)
+                {
+                    return (
+                        HttpStatusCode.Conflict,
+                        "FK_CONSTRAINT",
+                        "This record is referenced by other data and cannot be changed with the requested action."
+                    );
+                }
+            }
+
+            return (
+                HttpStatusCode.BadRequest,
+                "DB_UPDATE_FAILED",
+                _env.IsDevelopment() ? ex.Message : "Could not save changes due to a database constraint."
+            );
         }
     }
 }

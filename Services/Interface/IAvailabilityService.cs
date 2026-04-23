@@ -13,6 +13,7 @@ namespace CareSchedule.Services.Interface
         // --------- Blocks ---------
         int CreateBlock(CreateAvailabilityBlockRequestDto dto);
         void RemoveBlock(int blockId);
+        void ActivateBlock(int blockId);
         IEnumerable<AvailabilityBlockResponseDto> ListBlocks(int providerId, int siteId, string? date);
 
         // --------- Slots (Read-only) ---------

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using CareSchedule.DTOs;
-using CareSchedule.Infrastructure;
+using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
@@ -16,9 +16,10 @@ namespace CareSchedule.Services.Implementation
             IRosterAssignmentRepository _assignRepo,
             IOnCallCoverageRepository _onCallRepo,
             IUserRepository _userRepo,
+            ISiteRepository _siteRepo,
             INotificationRepository _notifRepo,
             IAuditLogService _auditService,
-            IUnitOfWork _uow) : IRosterService
+            CareScheduleContext _db) : IRosterService
     {
         private static readonly string[] AllowedRoles = { "Nurse", "FrontDesk", "Provider" };
 
@@ -28,7 +29,9 @@ namespace CareSchedule.Services.Implementation
         {
             if (string.IsNullOrWhiteSpace(dto.Name))
                 throw new ArgumentException("Name is required.");
+            EnsureSiteActive(dto.SiteId);
 
+            dto.Name = dto.Name.Trim();
             var start = ParseTime(dto.StartTime, "StartTime");
             var end = ParseTime(dto.EndTime, "EndTime");
             if (start >= end)
@@ -36,6 +39,15 @@ namespace CareSchedule.Services.Implementation
 
             if (!AllowedRoles.Contains(dto.Role, StringComparer.OrdinalIgnoreCase))
                 throw new ArgumentException($"Role must be one of: {string.Join(", ", AllowedRoles)}.");
+
+            var hasDuplicate = _shiftRepo.Search(dto.SiteId, dto.Role, null)
+                .Any(t =>
+                    string.Equals(t.Name?.Trim(), dto.Name, StringComparison.OrdinalIgnoreCase) &&
+                    t.StartTime == start &&
+                    t.EndTime == end &&
+                    !string.Equals(t.Status, "Inactive", StringComparison.OrdinalIgnoreCase));
+            if (hasDuplicate)
+                throw new ArgumentException("Duplicate shift template exists for same site, role, name and time.");
 
             var entity = new ShiftTemplate
             {
@@ -57,7 +69,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"name\":\"{entity.Name}\",\"siteId\":{entity.SiteId}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapShiftTemplate(entity);
         }
 
@@ -81,6 +93,16 @@ namespace CareSchedule.Services.Implementation
             if (entity.StartTime >= entity.EndTime)
                 throw new ArgumentException("StartTime must be before EndTime.");
 
+            var hasDuplicate = _shiftRepo.Search(entity.SiteId, entity.Role, null)
+                .Any(t =>
+                    t.ShiftTemplateId != id &&
+                    string.Equals(t.Name?.Trim(), entity.Name?.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                    t.StartTime == entity.StartTime &&
+                    t.EndTime == entity.EndTime &&
+                    !string.Equals(t.Status, "Inactive", StringComparison.OrdinalIgnoreCase));
+            if (hasDuplicate)
+                throw new ArgumentException("Duplicate shift template exists for same site, role, name and time.");
+
             _shiftRepo.Update(entity);
 
             _auditService.CreateAudit(new AuditLogCreateDto
@@ -90,7 +112,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"shiftTemplateId\":{id}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapShiftTemplate(entity);
         }
 
@@ -114,7 +136,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"shiftTemplateId\":{id}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
         }
 
         public ShiftTemplateResponseDto GetShiftTemplate(int id)
@@ -138,6 +160,7 @@ namespace CareSchedule.Services.Implementation
             var periodEnd = ParseDate(dto.PeriodEnd, "PeriodEnd");
             if (periodStart >= periodEnd)
                 throw new ArgumentException("PeriodStart must be before PeriodEnd.");
+            EnsureSiteActive(dto.SiteId);
 
             var entity = new Roster
             {
@@ -157,7 +180,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"siteId\":{dto.SiteId},\"period\":\"{periodStart:yyyy-MM-dd} to {periodEnd:yyyy-MM-dd}\"}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapRoster(entity);
         }
 
@@ -187,7 +210,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"rosterId\":{rosterId}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapRoster(entity);
         }
 
@@ -206,7 +229,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"rosterId\":{rosterId}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
         }
 
         public RosterResponseDto PublishRoster(int rosterId, PublishRosterDto dto)
@@ -246,7 +269,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"rosterId\":{rosterId},\"publishedBy\":{dto.PublishedBy}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapRoster(entity);
         }
 
@@ -279,16 +302,21 @@ namespace CareSchedule.Services.Implementation
 
             var user = _userRepo.GetById(dto.UserId)
                 ?? throw new KeyNotFoundException("User not found.");
+            if (!string.Equals(user.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("User is not active.");
 
             if (!string.Equals(user.Role, shift.Role, StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException($"User role '{user.Role}' does not match shift role '{shift.Role}'.");
 
             var date = ParseDate(dto.Date, "Date");
 
-            var existing = _assignRepo.Search(null, dto.UserId, date, "Assigned")
-                .Any(a => a.RosterId == dto.RosterId);
-            if (existing)
-                throw new ArgumentException("User already has an assignment on this date for this roster.");
+            var hasSameTemplateAssignment = _assignRepo.Search(null, dto.UserId, date, null)
+                .Any(a =>
+                    a.ShiftTemplateId == dto.ShiftTemplateId &&
+                    !string.Equals(a.Status, "Absent", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(a.Status, "Cancelled", StringComparison.OrdinalIgnoreCase));
+            if (hasSameTemplateAssignment)
+                throw new ArgumentException("This nurse already has the same shift template assigned on this date.");
 
             var entity = new RosterAssignment
             {
@@ -309,7 +337,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"rosterId\":{dto.RosterId},\"userId\":{dto.UserId},\"date\":\"{date:yyyy-MM-dd}\"}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapAssignment(entity);
         }
 
@@ -319,6 +347,8 @@ namespace CareSchedule.Services.Implementation
                 ?? throw new KeyNotFoundException("Assignment not found.");
             if (entity.Status != "Assigned")
                 throw new ArgumentException("Only Assigned shifts can be swapped.");
+            if (!dto.NewUserId.HasValue && !dto.NewShiftTemplateId.HasValue)
+                throw new ArgumentException("Provide at least one change (newUserId or newShiftTemplateId).");
 
             var oldUserId = entity.UserId;
 
@@ -326,6 +356,8 @@ namespace CareSchedule.Services.Implementation
             {
                 var newUser = _userRepo.GetById(dto.NewUserId.Value)
                     ?? throw new KeyNotFoundException("New user not found.");
+                if (!string.Equals(newUser.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException("New user is not active.");
 
                 var targetShift = dto.NewShiftTemplateId.HasValue
                     ? _shiftRepo.GetById(dto.NewShiftTemplateId.Value) ?? throw new KeyNotFoundException("New shift template not found.")
@@ -334,13 +366,22 @@ namespace CareSchedule.Services.Implementation
                 if (!string.Equals(newUser.Role, targetShift.Role, StringComparison.OrdinalIgnoreCase))
                     throw new ArgumentException($"New user role '{newUser.Role}' does not match shift role '{targetShift.Role}'.");
 
+                var hasDuplicateAssignment = _assignRepo.Search(null, dto.NewUserId.Value, entity.Date, null)
+                    .Any(a =>
+                        a.AssignmentId != entity.AssignmentId &&
+                        a.ShiftTemplateId == (dto.NewShiftTemplateId ?? entity.ShiftTemplateId) &&
+                        !string.Equals(a.Status, "Absent", StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(a.Status, "Cancelled", StringComparison.OrdinalIgnoreCase));
+                if (hasDuplicateAssignment)
+                    throw new ArgumentException("Replacement staff already has this shift template assigned on this date.");
+
                 entity.UserId = dto.NewUserId.Value;
             }
 
             if (dto.NewShiftTemplateId.HasValue)
                 entity.ShiftTemplateId = dto.NewShiftTemplateId.Value;
 
-            entity.Status = "Swapped";
+            entity.Status = "Assigned";
             _assignRepo.Update(entity);
 
             _notifRepo.Add(new Notification
@@ -371,7 +412,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"assignmentId\":{assignmentId},\"oldUserId\":{oldUserId},\"newUserId\":{entity.UserId}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapAssignment(entity);
         }
 
@@ -392,7 +433,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"assignmentId\":{assignmentId}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
         }
 
         public IEnumerable<RosterAssignmentResponseDto> SearchAssignments(RosterAssignmentSearchDto dto)
@@ -409,11 +450,19 @@ namespace CareSchedule.Services.Implementation
 
         public OnCallResponseDto CreateOnCall(CreateOnCallDto dto)
         {
+            EnsureSiteActive(dto.SiteId);
             var date = ParseDate(dto.Date, "Date");
+            if (date < DateOnly.FromDateTime(DateTime.UtcNow.Date))
+                throw new ArgumentException("On-call coverage cannot be created for a past date.");
             var start = ParseTime(dto.StartTime, "StartTime");
             var end = ParseTime(dto.EndTime, "EndTime");
             if (start >= end)
                 throw new ArgumentException("StartTime must be before EndTime.");
+            if (dto.BackupUserId.HasValue && dto.BackupUserId.Value == dto.PrimaryUserId)
+                throw new ArgumentException("Backup user cannot be the same as primary user.");
+            EnsureUserActive(dto.PrimaryUserId, "Primary user");
+            if (dto.BackupUserId.HasValue && dto.BackupUserId.Value > 0)
+                EnsureUserActive(dto.BackupUserId.Value, "Backup user");
 
             var overlaps = _onCallRepo.Search(dto.SiteId, date)
                 .Any(o => o.Status == "Active" && o.StartTime < end && o.EndTime > start);
@@ -441,7 +490,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"siteId\":{dto.SiteId},\"date\":\"{date:yyyy-MM-dd}\"}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapOnCall(entity);
         }
 
@@ -454,12 +503,23 @@ namespace CareSchedule.Services.Implementation
             if (dto.Date != null) entity.Date = ParseDate(dto.Date, "Date");
             if (dto.StartTime != null) entity.StartTime = ParseTime(dto.StartTime, "StartTime");
             if (dto.EndTime != null) entity.EndTime = ParseTime(dto.EndTime, "EndTime");
+            EnsureSiteActive(entity.SiteId);
             if (dto.PrimaryUserId.HasValue) entity.PrimaryUserId = dto.PrimaryUserId.Value;
-            if (dto.BackupUserId.HasValue) entity.BackupUserId = dto.BackupUserId.Value;
+            if (dto.BackupUserId.HasValue)
+            {
+                entity.BackupUserId = dto.BackupUserId.Value <= 0 ? null : dto.BackupUserId.Value;
+            }
             if (dto.Status != null) entity.Status = dto.Status;
+            if (entity.Date < DateOnly.FromDateTime(DateTime.UtcNow.Date))
+                throw new ArgumentException("On-call coverage cannot be updated for a past date.");
 
             if (entity.StartTime >= entity.EndTime)
                 throw new ArgumentException("StartTime must be before EndTime.");
+            if (entity.BackupUserId.HasValue && entity.BackupUserId.Value == entity.PrimaryUserId)
+                throw new ArgumentException("Backup user cannot be the same as primary user.");
+            EnsureUserActive(entity.PrimaryUserId, "Primary user");
+            if (entity.BackupUserId.HasValue && entity.BackupUserId.Value > 0)
+                EnsureUserActive(entity.BackupUserId.Value, "Backup user");
 
             _onCallRepo.Update(entity);
 
@@ -470,7 +530,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"onCallId\":{id}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapOnCall(entity);
         }
 
@@ -505,6 +565,20 @@ namespace CareSchedule.Services.Implementation
             if (!DateOnly.TryParseExact(value?.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var result))
                 throw new ArgumentException($"Invalid {fieldName} format. Use yyyy-MM-dd.");
             return result;
+        }
+
+        private void EnsureSiteActive(int siteId)
+        {
+            var site = _siteRepo.Get(siteId) ?? throw new KeyNotFoundException($"Site {siteId} not found.");
+            if (!string.Equals(site.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Site is not active.");
+        }
+
+        private void EnsureUserActive(int userId, string field)
+        {
+            var user = _userRepo.GetById(userId) ?? throw new KeyNotFoundException($"{field} not found.");
+            if (!string.Equals(user.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"{field} is not active.");
         }
 
         private static ShiftTemplateResponseDto MapShiftTemplate(ShiftTemplate e) => new()

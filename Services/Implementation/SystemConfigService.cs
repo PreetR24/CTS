@@ -44,12 +44,19 @@ namespace CareSchedule.Services.Implementation
                 throw new ArgumentException("Key is required.");
             if (string.IsNullOrWhiteSpace(dto.Value))
                 throw new ArgumentException("Value is required.");
+            var normalizedKey = dto.Key.Trim();
+            var normalizedScope = string.IsNullOrWhiteSpace(dto.Scope) ? "Global" : dto.Scope.Trim();
+            var existing = _systemconfigrepo.Search(normalizedKey, normalizedScope, 1, 2000, "key", "asc").Items
+                .Any(x => string.Equals(x.Key, normalizedKey, StringComparison.OrdinalIgnoreCase)
+                       && string.Equals(x.Scope, normalizedScope, StringComparison.OrdinalIgnoreCase));
+            if (existing)
+                throw new ArgumentException("Duplicate system config key already exists for this scope.");
 
             var e = new SystemConfig
             {
-                Key = dto.Key.Trim(),
+                Key = normalizedKey,
                 Value = dto.Value.Trim(),
-                Scope = string.IsNullOrWhiteSpace(dto.Scope) ? "Global" : dto.Scope.Trim(),
+                Scope = normalizedScope,
                 UpdatedBy = dto.UpdatedBy,
                 UpdatedDate = DateTime.UtcNow
             };

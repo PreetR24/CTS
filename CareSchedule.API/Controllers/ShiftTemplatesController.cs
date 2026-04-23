@@ -8,10 +8,11 @@ namespace CareSchedule.API.Controllers
 {
     [ApiController]
     [Route("shift-templates")]
-    [Authorize(Roles = "Operations,Admin")]
+    [Authorize]
     public class ShiftTemplatesController(IRosterService _shifttemplateservice) : ControllerBase
     {
         [HttpGet]
+        [Authorize(Roles = "Operations,Admin,Nurse,FrontDesk")]
         public ActionResult<ApiResponse<IEnumerable<ShiftTemplateResponseDto>>> Search([FromQuery] ShiftTemplateSearchDto dto)
         {
             var list = _shifttemplateservice.SearchShiftTemplates(dto);
@@ -19,6 +20,7 @@ namespace CareSchedule.API.Controllers
         }
 
         [HttpGet("{id:int}")]
+        [Authorize(Roles = "Operations,Admin,Nurse,FrontDesk")]
         public ActionResult<ApiResponse<ShiftTemplateResponseDto>> GetById(int id)
         {
             var result = _shifttemplateservice.GetShiftTemplate(id);
@@ -26,6 +28,7 @@ namespace CareSchedule.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Operations,Admin")]
         public ActionResult<ApiResponse<ShiftTemplateResponseDto>> Create([FromBody] CreateShiftTemplateDto dto)
         {
             var result = _shifttemplateservice.CreateShiftTemplate(dto);
@@ -33,6 +36,7 @@ namespace CareSchedule.API.Controllers
         }
 
         [HttpPut("{id:int}")]
+        [Authorize(Roles = "Operations,Admin")]
         public ActionResult<ApiResponse<ShiftTemplateResponseDto>> Update(int id, [FromBody] UpdateShiftTemplateDto dto)
         {
             var result = _shifttemplateservice.UpdateShiftTemplate(id, dto);
@@ -40,6 +44,7 @@ namespace CareSchedule.API.Controllers
         }
 
         [HttpDelete("{id:int}")]
+        [Authorize(Roles = "Operations,Admin")]
         public ActionResult<ApiResponse<object>> Delete(int id)
         {
             _shifttemplateservice.DeleteShiftTemplate(id);

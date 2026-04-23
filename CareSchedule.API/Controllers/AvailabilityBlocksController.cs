@@ -27,6 +27,14 @@ namespace CareSchedule.API.Controllers
             return ApiResponse<object>.Ok(null, "Block removed.");
         }
 
+        [HttpPatch("{blockId:int}/activate")]
+        [Authorize(Roles = "Provider,Admin")]
+        public ActionResult<ApiResponse<object>> Activate(int blockId)
+        {
+            _availabilityservice.ActivateBlock(blockId);
+            return ApiResponse<object>.Ok(null, "Block activated.");
+        }
+
         [HttpGet]
         public ActionResult<ApiResponse<IEnumerable<AvailabilityBlockResponseDto>>> List([FromQuery] int providerId, [FromQuery] int siteId, [FromQuery] string? date)
         {

@@ -15,9 +15,13 @@ namespace CareSchedule.Services.Implementation
         {
             var provider = _providerRepo.GetById(dto.ProviderId)
                 ?? throw new ArgumentException($"Provider with ID {dto.ProviderId} does not exist.");
+            if (!string.Equals(provider.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"Provider with ID {dto.ProviderId} is not active.");
 
             var service = _serviceRepo.GetById(dto.ServiceId)
                 ?? throw new ArgumentException($"Service with ID {dto.ServiceId} does not exist.");
+            if (!string.Equals(service.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"Service with ID {dto.ServiceId} is not active.");
 
             var existing = _psRepo.GetByProviderAndService(dto.ProviderId, dto.ServiceId);
             if (existing is not null)

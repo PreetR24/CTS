@@ -13,9 +13,16 @@ namespace CareSchedule.API.Controllers
     public class UsersController(IUserService _userservice) : ControllerBase
     {
         [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,FrontDesk,Operations")]
         public IActionResult Search([FromQuery] UserSearchQuery q)
-            => Ok(ApiResponse<object>.Ok(_userservice.SearchUser(q)));
+        {
+            var role = User.GetRole();
+            if (string.Equals(role, "FrontDesk", StringComparison.OrdinalIgnoreCase))
+            {
+                q.Role = "Patient";
+            }
+            return Ok(ApiResponse<object>.Ok(_userservice.SearchUser(q)));
+        }
 
         [HttpGet("{id:int}")]
         [Authorize]

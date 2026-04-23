@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using CareSchedule.DTOs;
-using CareSchedule.Infrastructure;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
@@ -12,9 +11,11 @@ namespace CareSchedule.Services.Implementation
 {
     public class WaitlistService(
             IWaitlistRepository _waitlistRepo,
-            IBookingService _bookingService,
-            IAuditLogService _auditService,
-            IUnitOfWork _uow) : IWaitlistService
+            ISiteRepository _siteRepo,
+            IProviderRepository _providerRepo,
+            IServiceRepository _serviceRepo,
+            IUserRepository _userRepo,
+            IAuditLogService _auditService) : IWaitlistService
     {
         public WaitlistResponseDto Add(CreateWaitlistRequestDto dto)
         {
@@ -22,6 +23,23 @@ namespace CareSchedule.Services.Implementation
             if (dto.ProviderId <= 0) throw new ArgumentException("ProviderId is required.");
             if (dto.ServiceId <= 0) throw new ArgumentException("ServiceId is required.");
             if (dto.PatientId <= 0) throw new ArgumentException("PatientId is required.");
+            if (_siteRepo.Get(dto.SiteId) is null) throw new KeyNotFoundException($"Site {dto.SiteId} not found.");
+            if (_providerRepo.GetById(dto.ProviderId) is null) throw new KeyNotFoundException($"Provider {dto.ProviderId} not found.");
+            if (_serviceRepo.GetById(dto.ServiceId) is null) throw new KeyNotFoundException($"Service {dto.ServiceId} not found.");
+            var site = _siteRepo.Get(dto.SiteId)!;
+            if (!string.Equals(site.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"Site {dto.SiteId} is not active.");
+            var provider = _providerRepo.GetById(dto.ProviderId)!;
+            if (!string.Equals(provider.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"Provider {dto.ProviderId} is not active.");
+            var service = _serviceRepo.GetById(dto.ServiceId)!;
+            if (!string.Equals(service.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"Service {dto.ServiceId} is not active.");
+            var patient = _userRepo.GetById(dto.PatientId);
+            if (patient is null || !string.Equals(patient.Role, "Patient", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"Patient {dto.PatientId} not found.");
+            if (!string.Equals(patient.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"Patient {dto.PatientId} is not active.");
 
             DateOnly reqDate = DateOnly.FromDateTime(DateTime.UtcNow);
             if (!string.IsNullOrWhiteSpace(dto.RequestedDate))
@@ -59,14 +77,13 @@ namespace CareSchedule.Services.Implementation
             var entity = _waitlistRepo.GetById(waitId);
             if (entity == null) throw new KeyNotFoundException($"Waitlist entry {waitId} not found.");
 
-            entity.Status = "Cancelled";
-            _waitlistRepo.Update(entity);
+            _waitlistRepo.Delete(entity);
 
             _auditService.CreateAudit(new AuditLogCreateDto
             {
                 Action = "RemoveFromWaitlist",
                 Resource = "Waitlist",
-                Metadata = $"WaitId={waitId} cancelled"
+                Metadata = $"WaitId={waitId} deleted"
             });
         }
 

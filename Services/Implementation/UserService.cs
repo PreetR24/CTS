@@ -47,8 +47,8 @@ namespace CareSchedule.Services.Implementation
                 var provider = new Provider
                 {
                     Name = e.Name,
-                    Specialty = null,
-                    Credentials = null,
+                    Specialty = string.IsNullOrWhiteSpace(dto.Specialty) ? null : dto.Specialty.Trim(),
+                    Credentials = string.IsNullOrWhiteSpace(dto.Credentials) ? null : dto.Credentials.Trim(),
                     ContactInfo = e.Phone,
                     Status = "Active"
                 };
@@ -103,6 +103,7 @@ namespace CareSchedule.Services.Implementation
                 Name = user.Name,
                 Role = user.Role,
                 Email = user.Email,
+                Phone = user.Phone,
                 LandingPage = ResolveLandingPage(user.Role)
             };
         }

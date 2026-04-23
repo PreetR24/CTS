@@ -21,7 +21,7 @@ namespace CareSchedule.Repositories.Implementation
         public IEnumerable<Blackout> ListBySite(int siteId)
         {
             return _db.Blackouts
-                .Where(b => b.SiteId == siteId && b.Status == "Active")
+                .Where(b => b.SiteId == siteId)
                 .OrderBy(b => b.StartDate)
                 .ToList();
         }
@@ -30,7 +30,6 @@ namespace CareSchedule.Repositories.Implementation
         {
             return _db.Blackouts
                 .Where(b => b.SiteId == siteId
-                    && b.Status == "Active"
                     && b.StartDate <= endDate
                     && b.EndDate >= startDate)
                 .OrderBy(b => b.StartDate)

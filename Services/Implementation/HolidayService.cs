@@ -50,6 +50,7 @@ namespace CareSchedule.Services.Implementation
         public HolidayDto CreateHoliday(HolidayCreateDto dto)
         {
             var d = ParseDate(dto.Date) ?? throw new ArgumentException("Invalid date. Use yyyy-MM-dd.");
+            EnsureNoDuplicate(dto.SiteId, d, null);
 
             var entity = new Holiday
             {
@@ -76,6 +77,7 @@ namespace CareSchedule.Services.Implementation
                 if (parsed is null) throw new ArgumentException("Invalid date. Use yyyy-MM-dd.");
                 entity.Date = parsed.Value; // ✅ fix the CS0266 you saw
             }
+            EnsureNoDuplicate(entity.SiteId, entity.Date, entity.HolidayId);
 
             if (dto.Description is not null)
                 entity.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim();
@@ -131,6 +133,14 @@ namespace CareSchedule.Services.Implementation
                 return d;
             }
             return null;
+        }
+
+        private void EnsureNoDuplicate(int siteId, DateOnly date, int? currentHolidayId)
+        {
+            var existing = _holidayrepo.GetByDate(siteId, date);
+            if (existing is null) return;
+            if (currentHolidayId.HasValue && existing.HolidayId == currentHolidayId.Value) return;
+            throw new ArgumentException("Holiday already exists for this site and date.");
         }
     }
 }

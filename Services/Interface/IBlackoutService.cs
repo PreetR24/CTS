@@ -6,6 +6,7 @@ namespace CareSchedule.Services.Interface
     {
         BlackoutResponseDto Create(CreateBlackoutRequestDto dto);
         void Cancel(int blackoutId);
+        void Activate(int blackoutId);
         IEnumerable<BlackoutResponseDto> List(int siteId, string? startDate, string? endDate);
     }
 }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using CareSchedule.DTOs;
-using CareSchedule.Infrastructure;
+using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
@@ -14,7 +14,7 @@ namespace CareSchedule.Services.Implementation
             ICapacityRuleRepository _capacityRepo,
             ISlaRepository _slaRepo,
             IAuditLogService _auditService,
-            IUnitOfWork _uow) : IRulesService
+            CareScheduleContext _db) : IRulesService
     {
         public CapacityRuleResponseDto CreateCapacityRule(CreateCapacityRuleDto dto)
         {
@@ -29,10 +29,22 @@ namespace CareSchedule.Services.Implementation
                 if (effectiveTo <= effectiveFrom)
                     throw new ArgumentException("EffectiveTo must be after EffectiveFrom.");
             }
+            var normalizedScope = dto.Scope.Trim();
+            var duplicateRule = _capacityRepo.Search(normalizedScope, null).Any(r =>
+                string.Equals(r.Scope, normalizedScope, StringComparison.OrdinalIgnoreCase) &&
+                r.ScopeId == dto.ScopeId &&
+                r.BufferMin == dto.BufferMin &&
+                r.MaxApptsPerDay == dto.MaxApptsPerDay &&
+                r.MaxConcurrentRooms == dto.MaxConcurrentRooms &&
+                r.EffectiveFrom == effectiveFrom &&
+                r.EffectiveTo == effectiveTo &&
+                !string.Equals(r.Status, "Inactive", StringComparison.OrdinalIgnoreCase));
+            if (duplicateRule)
+                throw new ArgumentException("Duplicate capacity rule already exists.");
 
             var entity = new CapacityRule
             {
-                Scope = dto.Scope.Trim(),
+                Scope = normalizedScope,
                 ScopeId = dto.ScopeId,
                 MaxApptsPerDay = dto.MaxApptsPerDay,
                 MaxConcurrentRooms = dto.MaxConcurrentRooms,
@@ -51,7 +63,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"ruleId\":{entity.RuleId},\"scope\":\"{entity.Scope}\"}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapRule(entity);
         }
 
@@ -77,6 +89,19 @@ namespace CareSchedule.Services.Implementation
 
             if (!string.IsNullOrWhiteSpace(dto.Status)) entity.Status = dto.Status.Trim();
 
+            var duplicateRule = _capacityRepo.Search(entity.Scope, null).Any(r =>
+                r.RuleId != entity.RuleId &&
+                string.Equals(r.Scope, entity.Scope, StringComparison.OrdinalIgnoreCase) &&
+                r.ScopeId == entity.ScopeId &&
+                r.BufferMin == entity.BufferMin &&
+                r.MaxApptsPerDay == entity.MaxApptsPerDay &&
+                r.MaxConcurrentRooms == entity.MaxConcurrentRooms &&
+                r.EffectiveFrom == entity.EffectiveFrom &&
+                r.EffectiveTo == entity.EffectiveTo &&
+                !string.Equals(r.Status, "Inactive", StringComparison.OrdinalIgnoreCase));
+            if (duplicateRule)
+                throw new ArgumentException("Duplicate capacity rule already exists.");
+
             _capacityRepo.Update(entity);
 
             _auditService.CreateAudit(new AuditLogCreateDto
@@ -86,7 +111,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"ruleId\":{entity.RuleId}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapRule(entity);
         }
 
@@ -120,7 +145,7 @@ namespace CareSchedule.Services.Implementation
                     Metadata = $"{{\"ruleId\":{entity.RuleId}}}"
                 });
 
-                _uow.SaveChanges();
+                _db.SaveChanges();
             }
         }
 
@@ -132,13 +157,24 @@ namespace CareSchedule.Services.Implementation
                 throw new ArgumentException("Metric is required.");
             if (dto.TargetValue <= 0)
                 throw new ArgumentException("TargetValue must be positive.");
+            var normalizedScope = dto.Scope.Trim();
+            var normalizedMetric = dto.Metric.Trim();
+            var normalizedUnit = string.IsNullOrWhiteSpace(dto.Unit) ? "Minutes" : dto.Unit.Trim();
+            var duplicateSla = _slaRepo.Search(normalizedScope, null).Any(s =>
+                string.Equals(s.Scope, normalizedScope, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(s.Metric, normalizedMetric, StringComparison.OrdinalIgnoreCase) &&
+                s.TargetValue == dto.TargetValue &&
+                string.Equals(s.Unit, normalizedUnit, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(s.Status, "Inactive", StringComparison.OrdinalIgnoreCase));
+            if (duplicateSla)
+                throw new ArgumentException("Duplicate SLA rule already exists.");
 
             var entity = new Sla
             {
-                Scope = dto.Scope.Trim(),
-                Metric = dto.Metric.Trim(),
+                Scope = normalizedScope,
+                Metric = normalizedMetric,
                 TargetValue = dto.TargetValue,
-                Unit = string.IsNullOrWhiteSpace(dto.Unit) ? "Minutes" : dto.Unit.Trim(),
+                Unit = normalizedUnit,
                 Status = "Active"
             };
 
@@ -151,7 +187,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"slaId\":{entity.Slaid},\"metric\":\"{entity.Metric}\"}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapSla(entity);
         }
 
@@ -171,6 +207,16 @@ namespace CareSchedule.Services.Implementation
             if (!string.IsNullOrWhiteSpace(dto.Unit)) entity.Unit = dto.Unit.Trim();
             if (!string.IsNullOrWhiteSpace(dto.Status)) entity.Status = dto.Status.Trim();
 
+            var duplicateSla = _slaRepo.Search(entity.Scope, null).Any(s =>
+                s.Slaid != entity.Slaid &&
+                string.Equals(s.Scope, entity.Scope, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(s.Metric, entity.Metric, StringComparison.OrdinalIgnoreCase) &&
+                s.TargetValue == entity.TargetValue &&
+                string.Equals(s.Unit, entity.Unit, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(s.Status, "Inactive", StringComparison.OrdinalIgnoreCase));
+            if (duplicateSla)
+                throw new ArgumentException("Duplicate SLA rule already exists.");
+
             _slaRepo.Update(entity);
 
             _auditService.CreateAudit(new AuditLogCreateDto
@@ -180,7 +226,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"slaId\":{entity.Slaid}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapSla(entity);
         }
 
@@ -214,7 +260,7 @@ namespace CareSchedule.Services.Implementation
                     Metadata = $"{{\"slaId\":{entity.Slaid}}}"
                 });
 
-                _uow.SaveChanges();
+                _db.SaveChanges();
             }
         }
 

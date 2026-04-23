@@ -25,6 +25,13 @@ namespace CareSchedule.API.Controllers
             return ApiResponse<object>.Ok(null, "Blackout cancelled.");
         }
 
+        [HttpPut("{blackoutId:int}/activate")]
+        public ActionResult<ApiResponse<object>> Activate(int blackoutId)
+        {
+            _blackoutService.Activate(blackoutId);
+            return ApiResponse<object>.Ok(null, "Blackout activated.");
+        }
+
         [HttpGet]
         public ActionResult<ApiResponse<IEnumerable<BlackoutResponseDto>>> List(
             [FromQuery] int siteId,

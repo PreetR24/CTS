@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using CareSchedule.DTOs;
-using CareSchedule.Infrastructure;
+using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
@@ -11,7 +11,7 @@ namespace CareSchedule.Services.Implementation
     public class BillingService(
             IChargeRefRepository _chargeRepo,
             IAuditLogService _auditService,
-            IUnitOfWork _uow)
+            CareScheduleContext _db)
             : IBillingService
     {
         public ChargeRefResponseDto CreateCharge(CreateChargeRefDto dto)
@@ -38,7 +38,7 @@ namespace CareSchedule.Services.Implementation
                 Resource = "ChargeRef",
                 Metadata = $"{{\"appointmentId\":{dto.AppointmentId}}}"
             });
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return Map(entity);
         }
 

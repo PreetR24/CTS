@@ -7,7 +7,7 @@ using CareSchedule.Services.Interface;
 namespace CareSchedule.API.Controllers
 {
     [ApiController]
-    [Authorize(Roles = "FrontDesk")]
+    [Authorize(Roles = "FrontDesk,Nurse")]
     public class CheckInsController(ICheckInService _checkinservice) : ControllerBase
     {
         [HttpPost("checkin/{appointmentId:int}")]
@@ -27,7 +27,7 @@ namespace CareSchedule.API.Controllers
         }
 
         [HttpPatch("checkins/{checkInId:int}/in-room")]
-        [Authorize(Roles = "FrontDesk")]
+        [Authorize(Roles = "Nurse")]
         public ActionResult<ApiResponse<CheckInResponseDto>> MoveToRoom(int checkInId)
         {
             var result = _checkinservice.MoveToRoom(checkInId);
@@ -35,7 +35,7 @@ namespace CareSchedule.API.Controllers
         }
 
         [HttpPatch("checkins/{checkInId:int}/status")]
-        [Authorize(Roles = "FrontDesk")]
+        [Authorize(Roles = "Nurse")]
         public ActionResult<ApiResponse<CheckInResponseDto>> UpdateStatus(int checkInId, [FromBody] UpdateCheckInStatusDto dto)
         {
             var result = _checkinservice.UpdateStatus(checkInId, dto);
@@ -43,7 +43,7 @@ namespace CareSchedule.API.Controllers
         }
 
         [HttpPatch("checkins/{checkInId:int}/with-provider")]
-        [Authorize(Roles = "FrontDesk")]
+        [Authorize(Roles = "Nurse")]
         public ActionResult<ApiResponse<CheckInResponseDto>> StartConsultation(int checkInId)
         {
             var result = _checkinservice.StartConsultation(checkInId);

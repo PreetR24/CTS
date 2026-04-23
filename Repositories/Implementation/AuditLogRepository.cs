@@ -9,6 +9,7 @@ namespace CareSchedule.Repositories.Implementation
     {
         public (List<AuditLog> Items, int Total) Search(
             int? userId,
+            string? userName,
             string? action,
             string? resource,
             DateTime? from,
@@ -27,6 +28,14 @@ namespace CareSchedule.Repositories.Implementation
             {
                 var id = userId.Value;
                 query = query.Where(a => a.UserId == id);
+            }
+
+            if (!string.IsNullOrWhiteSpace(userName))
+            {
+                var pattern = userName.Trim();
+                query = query.Where(a =>
+                    a.UserId.HasValue &&
+                    _db.Users.Any(u => u.UserId == a.UserId.Value && EF.Functions.Like(u.Name, $"%{pattern}%")));
             }
 
             if (!string.IsNullOrWhiteSpace(action))

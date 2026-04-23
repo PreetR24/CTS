@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using CareSchedule.DTOs;
-using CareSchedule.Infrastructure;
+using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
@@ -21,7 +21,7 @@ namespace CareSchedule.Services.Implementation
             IAvailabilityBlockRepository _blockRepo,
             ICalendarEventRepository _calendarRepo,
             IProviderRepository _providerRepo,
-            IUnitOfWork _uow) : ILeaveService
+            CareScheduleContext _db) : ILeaveService
     {
         private static readonly string[] AllowedLeaveTypes = { "Vacation", "Sick", "CME", "Other" };
 
@@ -34,6 +34,8 @@ namespace CareSchedule.Services.Implementation
             var endDate = ParseDate(dto.EndDate, "EndDate");
             if (startDate > endDate)
                 throw new ArgumentException("StartDate must be on or before EndDate.");
+            if (startDate < DateOnly.FromDateTime(DateTime.UtcNow.Date))
+                throw new ArgumentException("StartDate cannot be in the past.");
 
             var overlapping = _leaveRepo.Search(userId, null)
                 .Any(l => l.Status is "Pending" or "Approved"
@@ -53,6 +55,9 @@ namespace CareSchedule.Services.Implementation
             };
 
             _leaveRepo.Add(entity);
+            _db.SaveChanges();
+
+            GenerateImpactsForLeave(entity);
 
             _auditService.CreateAudit(new AuditLogCreateDto
             {
@@ -61,7 +66,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"leaveId\":{entity.LeaveId},\"userId\":{userId}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapLeave(entity);
         }
 
@@ -86,7 +91,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"leaveId\":{leaveId}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapLeave(entity);
         }
 
@@ -138,7 +143,7 @@ namespace CareSchedule.Services.Implementation
                     };
                     _blockRepo.Add(block);
 
-                    _uow.SaveChanges();
+                    _db.SaveChanges();
 
                     _calendarRepo.Add(new CalendarEvent
                     {
@@ -153,54 +158,9 @@ namespace CareSchedule.Services.Implementation
                     });
                 }
 
-                // Generate LeaveImpact for affected appointments
-                var affectedAppts = providerAppointments
-                    .Where(a => a.SlotDate >= entity.StartDate && a.SlotDate <= entity.EndDate
-                        && a.Status is not ("Cancelled" or "Completed" or "NoShow"))
-                    .ToList();
-
-                if (affectedAppts.Count > 0)
-                {
-                    var appointmentIds = affectedAppts.Select(a => a.AppointmentId).ToList();
-                    _impactRepo.Add(new LeaveImpact
-                    {
-                        LeaveId = leaveId,
-                        ImpactType = "Appointments",
-                        ImpactJson = JsonSerializer.Serialize(new { appointmentIds }),
-                        Status = "Open"
-                    });
-
-                    foreach (var appt in affectedAppts)
-                    {
-                        _notifRepo.Add(new Notification
-                        {
-                            UserId = appt.PatientId,
-                            Message = $"Your appointment on {appt.SlotDate:yyyy-MM-dd} may need to be rescheduled due to provider leave.",
-                            Category = "Appointment",
-                            Status = "Unread",
-                            CreatedDate = DateTime.UtcNow
-                        });
-                    }
-                }
             }
 
-            // Generate LeaveImpact for affected roster assignments
-            var affectedAssignments = _rosterAssignRepo
-                .Search(null, entity.UserId, null, "Assigned")
-                .Where(a => a.Date >= entity.StartDate && a.Date <= entity.EndDate)
-                .ToList();
-
-            if (affectedAssignments.Count > 0)
-            {
-                var assignmentIds = affectedAssignments.Select(a => a.AssignmentId).ToList();
-                _impactRepo.Add(new LeaveImpact
-                {
-                    LeaveId = leaveId,
-                    ImpactType = "Roster",
-                    ImpactJson = JsonSerializer.Serialize(new { assignmentIds }),
-                    Status = "Open"
-                });
-            }
+            GenerateImpactsForLeave(entity);
 
             _auditService.CreateAudit(new AuditLogCreateDto
             {
@@ -209,7 +169,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"leaveId\":{leaveId}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapLeave(entity);
         }
 
@@ -240,7 +200,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"leaveId\":{leaveId}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapLeave(entity);
         }
 
@@ -279,7 +239,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"impactId\":{entity.ImpactId},\"leaveId\":{dto.LeaveId}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapImpact(entity);
         }
 
@@ -303,7 +263,7 @@ namespace CareSchedule.Services.Implementation
                 Metadata = $"{{\"impactId\":{impactId}}}"
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return MapImpact(entity);
         }
 
@@ -338,5 +298,68 @@ namespace CareSchedule.Services.Implementation
             ResolvedDate = e.ResolvedDate,
             Status = e.Status
         };
+
+        private void GenerateImpactsForLeave(LeaveRequest leave)
+        {
+            var existingImpacts = _impactRepo.GetByLeaveId(leave.LeaveId).ToList();
+            var hasAppointmentsImpact = existingImpacts.Any(i =>
+                string.Equals(i.ImpactType, "Appointments", StringComparison.OrdinalIgnoreCase));
+            var hasRosterImpact = existingImpacts.Any(i =>
+                string.Equals(i.ImpactType, "Roster", StringComparison.OrdinalIgnoreCase));
+
+            var providerId = _providerRepo.GetById(leave.UserId)?.ProviderId;
+            if (providerId.HasValue && !hasAppointmentsImpact)
+            {
+                var providerAppointments = _apptRepo.Search(null, providerId.Value, null, null, null).ToList();
+                var affectedAppts = providerAppointments
+                    .Where(a => a.SlotDate >= leave.StartDate && a.SlotDate <= leave.EndDate
+                        && a.Status is not ("Cancelled" or "Completed" or "NoShow"))
+                    .ToList();
+
+                if (affectedAppts.Count > 0)
+                {
+                    var appointmentIds = affectedAppts.Select(a => a.AppointmentId).ToList();
+                    _impactRepo.Add(new LeaveImpact
+                    {
+                        LeaveId = leave.LeaveId,
+                        ImpactType = "Appointments",
+                        ImpactJson = JsonSerializer.Serialize(new { appointmentIds }),
+                        Status = "Open"
+                    });
+
+                    foreach (var appt in affectedAppts)
+                    {
+                        _notifRepo.Add(new Notification
+                        {
+                            UserId = appt.PatientId,
+                            Message = $"Your appointment on {appt.SlotDate:yyyy-MM-dd} may need to be rescheduled due to provider leave.",
+                            Category = "Appointment",
+                            Status = "Unread",
+                            CreatedDate = DateTime.UtcNow
+                        });
+                    }
+                }
+            }
+
+            if (!hasRosterImpact)
+            {
+                var affectedAssignments = _rosterAssignRepo
+                    .Search(null, leave.UserId, null, "Assigned")
+                    .Where(a => a.Date >= leave.StartDate && a.Date <= leave.EndDate)
+                    .ToList();
+
+                if (affectedAssignments.Count > 0)
+                {
+                    var assignmentIds = affectedAssignments.Select(a => a.AssignmentId).ToList();
+                    _impactRepo.Add(new LeaveImpact
+                    {
+                        LeaveId = leave.LeaveId,
+                        ImpactType = "Roster",
+                        ImpactJson = JsonSerializer.Serialize(new { assignmentIds }),
+                        Status = "Open"
+                    });
+                }
+            }
+        }
     }
 }

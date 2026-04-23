@@ -6,7 +6,6 @@ using CareSchedule.Services.Interface;
 using CareSchedule.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using CareSchedule.Infrastructure;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,7 +45,6 @@ builder.Services.AddDbContext<CareScheduleContext>(options =>
     options.UseSqlServer(connectionString));
 
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 
 // Booking repos

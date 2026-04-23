@@ -6,7 +6,10 @@ using System.Collections.Generic;
 
 namespace CareSchedule.Services.Implementation
 {
-    public class RoomService(IRoomRepository _roomrepo, IAuditLogService _auditService) : IRoomService
+    public class RoomService(
+        IRoomRepository _roomrepo,
+        ISiteRepository _siteRepo,
+        IAuditLogService _auditService) : IRoomService
     {
         public List<RoomDto> SearchRoom(RoomSearchQuery q)
         {
@@ -42,6 +45,7 @@ namespace CareSchedule.Services.Implementation
         {
             if (string.IsNullOrWhiteSpace(dto.RoomName)) throw new ArgumentException("RoomName is required.");
             if (dto.SiteId <= 0) throw new ArgumentException("SiteId is required.");
+            EnsureSiteActive(dto.SiteId);
 
             var e = new Room
             {
@@ -70,7 +74,11 @@ namespace CareSchedule.Services.Implementation
 
             if (!string.IsNullOrWhiteSpace(dto.RoomName)) e.RoomName = dto.RoomName.Trim();
             if (!string.IsNullOrWhiteSpace(dto.RoomType)) e.RoomType = dto.RoomType.Trim();
-            if (dto.SiteId.HasValue) e.SiteId = dto.SiteId.Value;
+            if (dto.SiteId.HasValue)
+            {
+                EnsureSiteActive(dto.SiteId.Value);
+                e.SiteId = dto.SiteId.Value;
+            }
             if (dto.AttributesJson is not null) e.AttributesJson = dto.AttributesJson;
 
             _roomrepo.Update(e);
@@ -130,5 +138,12 @@ namespace CareSchedule.Services.Implementation
             AttributesJson = r.AttributesJson,
             Status = r.Status
         };
+
+        private void EnsureSiteActive(int siteId)
+        {
+            var site = _siteRepo.Get(siteId) ?? throw new KeyNotFoundException($"Site {siteId} not found.");
+            if (!string.Equals(site.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Cannot use inactive site.");
+        }
     }
 }

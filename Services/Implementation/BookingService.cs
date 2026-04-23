@@ -8,7 +8,6 @@ using CareSchedule.DTOs;
 
 using CareSchedule.Models;
 using CareSchedule.Infrastructure.Data;
-using CareSchedule.Infrastructure;
 
 using CareSchedule.Repositories.Interface;
 
@@ -16,7 +15,6 @@ namespace CareSchedule.Services.Implementation
 {
     public class BookingService(
             CareScheduleContext _db,
-            IUnitOfWork _uow,
             IAppointmentRepository _apptRepo,
             IAppointmentChangeRepository _changeRepo,
             IPublishedSlotBookingRepository _slotRepo,
@@ -26,6 +24,13 @@ namespace CareSchedule.Services.Implementation
             ISystemConfigRepository _configRepo,
             ICapacityRuleRepository _capacityRuleRepo,
             IWaitlistRepository _waitlistRepo,
+            IUserRepository _userRepo,
+            IProviderRepository _providerRepo,
+            ISiteRepository _siteRepo,
+            IServiceRepository _serviceRepo,
+            IProviderServiceRepository _providerServiceRepo,
+            IHolidayRepository _holidayRepo,
+            IBlackoutRepository _blackoutRepo,
             IAuditLogService _auditService)
             : IBookingService
     {
@@ -39,6 +44,11 @@ namespace CareSchedule.Services.Implementation
             if (slot == null) throw new KeyNotFoundException("Slot not found.");
             if (!string.Equals(slot.Status, "Open", StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException("SLOT_UNAVAILABLE");
+            if (CombineLocal(slot.SlotDate, slot.StartTime) <= DateTime.Now)
+                throw new ArgumentException("Cannot book an appointment for past date/time.");
+            EnsureSlotDateAllowed(slot.SiteId, slot.SlotDate);
+            EnsureBookingWindowByConfig(slot.SlotDate);
+            EnsureBookingReferencesActive(dto.PatientId, slot.ProviderId, slot.ServiceId, slot.SiteId);
 
             var maxPerDay = ResolveMaxPerDay(slot.ProviderId, slot.ServiceId, slot.SiteId, slot.SlotDate);
             if (maxPerDay.HasValue)
@@ -84,7 +94,7 @@ namespace CareSchedule.Services.Implementation
                 });
 
                 // Persist to get AppointmentId
-                _uow.SaveChanges();
+                _db.SaveChanges();
 
                 // Update event with actual AppointmentId
                 _calendarRepo.SetLatestEntityId("Appointment", appt.AppointmentId);
@@ -119,7 +129,7 @@ namespace CareSchedule.Services.Implementation
                     Metadata = $"{{\"appointmentId\":{appt.AppointmentId},\"slotId\":{slot.PubSlotId}}}"
                 });
 
-                _uow.SaveChanges();
+                _db.SaveChanges();
                 tx.Commit();
 
                 return Map(appt);
@@ -140,6 +150,25 @@ namespace CareSchedule.Services.Implementation
             if (newSlot == null) throw new KeyNotFoundException("New slot not found.");
             if (!string.Equals(newSlot.Status, "Open", StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException("SLOT_UNAVAILABLE");
+            if (CombineLocal(newSlot.SlotDate, newSlot.StartTime) <= DateTime.Now)
+                throw new ArgumentException("Cannot reschedule to a past date/time.");
+            EnsureSlotDateAllowed(newSlot.SiteId, newSlot.SlotDate);
+            EnsureBookingWindowByConfig(newSlot.SlotDate);
+            EnsureBookingReferencesActive(appt.PatientId, newSlot.ProviderId, newSlot.ServiceId, newSlot.SiteId);
+
+            var maxPerDay = ResolveMaxPerDay(newSlot.ProviderId, newSlot.ServiceId, newSlot.SiteId, newSlot.SlotDate);
+            if (maxPerDay.HasValue)
+            {
+                var countToday = _apptRepo.CountByProviderDate(newSlot.ProviderId, newSlot.SiteId, newSlot.SlotDate, "Booked");
+                var sameBucket =
+                    appt.ProviderId == newSlot.ProviderId &&
+                    appt.SiteId == newSlot.SiteId &&
+                    appt.SlotDate == newSlot.SlotDate &&
+                    string.Equals(appt.Status, "Booked", StringComparison.OrdinalIgnoreCase);
+                var effectiveCount = sameBucket ? Math.Max(0, countToday - 1) : countToday;
+                if (effectiveCount >= maxPerDay.Value)
+                    throw new ArgumentException("CAPACITY_EXCEEDED");
+            }
 
             // Old exact slot (if exists) to free later (Held -> Open). Closed never re-opens.
             var oldSlot = _slotRepo.FindExact(appt.ProviderId, appt.SiteId, appt.SlotDate, appt.StartTime, appt.EndTime);
@@ -220,7 +249,7 @@ namespace CareSchedule.Services.Implementation
                     Metadata = $"{{\"appointmentId\":{appt.AppointmentId},\"newSlotId\":{newSlot.PubSlotId}}}"
                 });
 
-                _uow.SaveChanges();
+                _db.SaveChanges();
                 tx.Commit();
 
                 return Map(appt);
@@ -317,7 +346,7 @@ namespace CareSchedule.Services.Implementation
                     Metadata = $"{{\"appointmentId\":{appt.AppointmentId}}}"
                 });
 
-                _uow.SaveChanges();
+                _db.SaveChanges();
                 tx.Commit();
             }
         }
@@ -369,6 +398,66 @@ namespace CareSchedule.Services.Implementation
         private static DateTime CombineUtc(DateOnly date, TimeOnly time)
         {
             return new DateTime(date.Year, date.Month, date.Day, time.Hour, time.Minute, 0, DateTimeKind.Utc);
+        }
+
+        private static DateTime CombineLocal(DateOnly date, TimeOnly time)
+        {
+            return new DateTime(date.Year, date.Month, date.Day, time.Hour, time.Minute, 0, DateTimeKind.Local);
+        }
+
+        private void EnsureSlotDateAllowed(int siteId, DateOnly date)
+        {
+            var isHoliday = _holidayRepo
+                .Search(siteId, date, null, null, "Active", 1, 1, null, null)
+                .Items
+                .Count > 0;
+            if (isHoliday)
+                throw new ArgumentException("Booking is not allowed on a holiday.");
+
+            var hasBlackout = _blackoutRepo
+                .ListBySiteDateRange(siteId, date, date)
+                .Any(b => string.Equals(b.Status, "Active", StringComparison.OrdinalIgnoreCase));
+            if (hasBlackout)
+                throw new ArgumentException("Booking is not allowed during blackout.");
+        }
+
+        private void EnsureBookingWindowByConfig(DateOnly slotDate)
+        {
+            var today = DateOnly.FromDateTime(DateTime.Now.Date);
+            var daysAhead = slotDate.DayNumber - today.DayNumber;
+
+            var minDays = _configRepo.GetInt("booking.advance.min.days", null);
+            if (minDays.HasValue && daysAhead < minDays.Value)
+                throw new ArgumentException($"Booking must be at least {minDays.Value} day(s) in advance.");
+
+            var maxDays = _configRepo.GetInt("booking.advance.max.days", null);
+            if (maxDays.HasValue && daysAhead > maxDays.Value)
+                throw new ArgumentException($"Booking cannot be more than {maxDays.Value} day(s) in advance.");
+        }
+
+        private void EnsureBookingReferencesActive(int patientId, int providerId, int serviceId, int siteId)
+        {
+            var patient = _userRepo.GetById(patientId) ?? throw new KeyNotFoundException($"Patient {patientId} not found.");
+            if (!string.Equals(patient.Role, "Patient", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"Patient {patientId} not found.");
+            if (!string.Equals(patient.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"Patient {patientId} is not active.");
+
+            var provider = _providerRepo.GetById(providerId) ?? throw new KeyNotFoundException($"Provider {providerId} not found.");
+            if (!string.Equals(provider.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"Provider {providerId} is not active.");
+
+            var site = _siteRepo.Get(siteId) ?? throw new KeyNotFoundException($"Site {siteId} not found.");
+            if (!string.Equals(site.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"Site {siteId} is not active.");
+
+            var service = _serviceRepo.GetById(serviceId) ?? throw new KeyNotFoundException($"Service {serviceId} not found.");
+            if (!string.Equals(service.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"Service {serviceId} is not active.");
+
+            var mapping = _providerServiceRepo.GetByProviderAndService(providerId, serviceId);
+            if (mapping is null || !string.Equals(mapping.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException($"Provider {providerId} does not have an active mapping for service {serviceId}.");
         }
 
         public void MarkCheckedIn(int appointmentId)
@@ -469,7 +558,7 @@ namespace CareSchedule.Services.Implementation
                 Resource = "Appointment",
                 Metadata = $"{{\"appointmentId\":{appointmentId}}}"
             });
-            _uow.SaveChanges();
+            _db.SaveChanges();
         }
 
         private static AppointmentResponseDto Map(Appointment a)
@@ -485,6 +574,8 @@ namespace CareSchedule.Services.Implementation
                 SiteName = a.Site?.Name,
                 ServiceId = a.ServiceId,
                 ServiceName = a.Service?.Name,
+                RoomId = a.RoomId,
+                RoomName = a.Room?.RoomName,
                 SlotDate = a.SlotDate,
                 StartTime = a.StartTime.ToString("HH:mm"),
                 EndTime = a.EndTime.ToString("HH:mm"),

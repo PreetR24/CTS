@@ -9,7 +9,7 @@ using CareSchedule.Services.Interface;
 
 namespace CareSchedule.Services.Implementation
 {
-    public class AuditLogService(IAuditLogRepository _auditrepo) : IAuditLogService
+    public class AuditLogService(IAuditLogRepository _auditrepo, IUserRepository _userRepo) : IAuditLogService
     {
         public List<AuditLogDto> SearchAudit(AuditLogSearchQuery query)
         {
@@ -21,6 +21,7 @@ namespace CareSchedule.Services.Implementation
 
             var (items, _) = _auditrepo.Search(
                 userId:   query.UserId,
+                userName: query.UserName,
                 action:   query.Action,
                 resource: query.Resource,
                 from:     fromUtc,
@@ -31,8 +32,20 @@ namespace CareSchedule.Services.Implementation
                 sortDir:  string.IsNullOrWhiteSpace(query.SortDir) ? "desc" : query.SortDir
             );
 
+            var namesById = items
+                .Where(x => x.UserId.HasValue)
+                .Select(x => x.UserId!.Value)
+                .Distinct()
+                .ToDictionary(id => id, id => _userRepo.GetById(id)?.Name);
+
             var list = new List<AuditLogDto>(items.Count);
-            foreach (var a in items) list.Add(Map(a));
+            foreach (var a in items)
+            {
+                var userName = a.UserId.HasValue && namesById.TryGetValue(a.UserId.Value, out var name)
+                    ? name
+                    : null;
+                list.Add(Map(a, userName));
+            }
             return list;
         }
 
@@ -40,7 +53,8 @@ namespace CareSchedule.Services.Implementation
         {
             var e = _auditrepo.Get(id);
             if (e is null) throw new KeyNotFoundException("Audit log not found.");
-            return Map(e);
+            var userName = e.UserId.HasValue ? _userRepo.GetById(e.UserId.Value)?.Name : null;
+            return Map(e, userName);
         }
 
         public AuditLogDto CreateAudit(AuditLogCreateDto dto)
@@ -62,15 +76,17 @@ namespace CareSchedule.Services.Implementation
             };
 
             e = _auditrepo.Create(e);
-            return Map(e);
+            var userName = e.UserId.HasValue ? _userRepo.GetById(e.UserId.Value)?.Name : null;
+            return Map(e, userName);
         }
 
         // ---- helpers ----
 
-        private static AuditLogDto Map(AuditLog a) => new()
+        private static AuditLogDto Map(AuditLog a, string? userName) => new()
         {
             AuditId   = a.AuditId,
             UserId    = a.UserId,
+            UserName  = userName,
             Action    = a.Action,
             Resource  = a.Resource,
             // a.Timestamp assumed UTC in DB; format to ISO 8601 string.

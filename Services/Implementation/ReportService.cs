@@ -4,14 +4,14 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using CareSchedule.DTOs;
-using CareSchedule.Infrastructure;
+using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
 
 namespace CareSchedule.Services.Implementation
 {
-    public class ReportService(IOpsReportRepository _reportRepo, IUnitOfWork _uow) : IReportService
+    public class ReportService(IOpsReportRepository _reportRepo, CareScheduleContext _db) : IReportService
     {
         public OpsReportResponseDto Create(CreateReportDto dto)
         {
@@ -25,7 +25,7 @@ namespace CareSchedule.Services.Implementation
                 GeneratedDate = DateTime.UtcNow
             };
             _reportRepo.Add(entity);
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return Map(entity);
         }
 

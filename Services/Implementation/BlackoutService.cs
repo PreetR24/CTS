@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using CareSchedule.DTOs;
-using CareSchedule.Infrastructure;
+using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
@@ -14,7 +14,7 @@ namespace CareSchedule.Services.Implementation
         ICalendarEventRepository _calendarRepo,
         ISiteRepository _siteRepo,
         IAuditLogService _auditService,
-        IUnitOfWork _uow) : IBlackoutService
+        CareScheduleContext _db) : IBlackoutService
     {
         public BlackoutResponseDto Create(CreateBlackoutRequestDto dto)
         {
@@ -27,6 +27,15 @@ namespace CareSchedule.Services.Implementation
             var endDate = ParseDateOnly(dto.EndDate);
             if (endDate < startDate) throw new ArgumentException("EndDate must be on or after StartDate.");
 
+            var hasDuplicate = _blackoutRepo
+                .ListBySite(dto.SiteId)
+                .Any(b =>
+                    string.Equals(b.Status, "Active", StringComparison.OrdinalIgnoreCase) &&
+                    b.StartDate == startDate &&
+                    b.EndDate == endDate);
+            if (hasDuplicate)
+                throw new ArgumentException("Duplicate blackout already exists for this site and date range.");
+
             var entity = new Blackout
             {
                 SiteId = dto.SiteId,
@@ -37,7 +46,7 @@ namespace CareSchedule.Services.Implementation
             };
 
             _blackoutRepo.Add(entity);
-            _uow.SaveChanges();
+            _db.SaveChanges();
 
             var slotsToClose = _slotRepo.FindBySiteDateRange(dto.SiteId, startDate, endDate, "Open", "Held");
             foreach (var s in slotsToClose)
@@ -75,7 +84,7 @@ namespace CareSchedule.Services.Implementation
                 })
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
             return Map(entity);
         }
 
@@ -97,7 +106,53 @@ namespace CareSchedule.Services.Implementation
                 Metadata = JsonSerializer.Serialize(new { blackoutId })
             });
 
-            _uow.SaveChanges();
+            _db.SaveChanges();
+        }
+
+        public void Activate(int blackoutId)
+        {
+            if (blackoutId <= 0) throw new ArgumentException("Invalid blackoutId.");
+
+            var entity = _blackoutRepo.GetById(blackoutId) ?? throw new KeyNotFoundException("Blackout not found.");
+            EnsureSiteActive(entity.SiteId);
+            if (string.Equals(entity.Status, "Active", StringComparison.OrdinalIgnoreCase)) return;
+
+            var hasDuplicate = _blackoutRepo
+                .ListBySite(entity.SiteId)
+                .Any(b =>
+                    b.BlackoutId != entity.BlackoutId &&
+                    string.Equals(b.Status, "Active", StringComparison.OrdinalIgnoreCase) &&
+                    b.StartDate == entity.StartDate &&
+                    b.EndDate == entity.EndDate);
+            if (hasDuplicate)
+                throw new ArgumentException("Another active blackout already exists for this site and date range.");
+
+            entity.Status = "Active";
+            _blackoutRepo.Update(entity);
+
+            for (var day = entity.StartDate; day <= entity.EndDate; day = day.AddDays(1))
+            {
+                _calendarRepo.Add(new CalendarEvent
+                {
+                    EntityType = "Blackout",
+                    EntityId = entity.BlackoutId,
+                    ProviderId = null,
+                    SiteId = entity.SiteId,
+                    RoomId = null,
+                    StartTime = new DateTime(day.Year, day.Month, day.Day, 0, 0, 0, DateTimeKind.Utc),
+                    EndTime = new DateTime(day.Year, day.Month, day.Day, 23, 59, 0, DateTimeKind.Utc),
+                    Status = "Active"
+                });
+            }
+
+            _auditService.CreateAudit(new AuditLogCreateDto
+            {
+                Action = "ActivateBlackout",
+                Resource = "Blackout",
+                Metadata = JsonSerializer.Serialize(new { blackoutId })
+            });
+
+            _db.SaveChanges();
         }
 
         public IEnumerable<BlackoutResponseDto> List(int siteId, string? startDate, string? endDate)

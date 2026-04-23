@@ -59,13 +59,17 @@ namespace CareSchedule.Repositories.Implementation
         public IEnumerable<ProviderService> GetActiveByProvider(int providerId)
         {
             return _db.ProviderServices
-                      .Where(ps => ps.ProviderId == providerId && ps.Status == "Active")
+                      .Where(ps => ps.ProviderId == providerId
+                                   && ps.Status != null
+                                   && ps.Status.Trim().ToLower() == "active")
                       .ToList();
         }
 
         public bool AnyActiveByService(int serviceId)
         {
-            return _db.ProviderServices.Any(ps => ps.ServiceId == serviceId && ps.Status == "Active");
+            return _db.ProviderServices.Any(ps => ps.ServiceId == serviceId
+                                                  && ps.Status != null
+                                                  && ps.Status.Trim().ToLower() == "active");
         }
     }
 }

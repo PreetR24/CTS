@@ -24,6 +24,8 @@ namespace CareSchedule.DTOs
         public string? SiteName { get; set; }
         public int ServiceId { get; set; }
         public string? ServiceName { get; set; }
+        public int? RoomId { get; set; }
+        public string? RoomName { get; set; }
         public DateOnly SlotDate { get; set; }
         public string StartTime { get; set; } = ""; // "HH:mm"
         public string EndTime { get; set; } = "";   // "HH:mm"

@@ -16,7 +16,8 @@ namespace CareSchedule.Repositories.Implementation
                             && s.ServiceId== serviceId
                             && s.SiteId== siteId
                             && s.SlotDate == date
-                            && s.Status == "Open")
+                            && s.Status != null
+                            && s.Status.Trim().ToLower() == "open")
                 .OrderBy(s => s.StartTime)
                 .ToList();
         }
