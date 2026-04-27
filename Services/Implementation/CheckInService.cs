@@ -124,6 +124,7 @@ namespace CareSchedule.Services.Implementation
 
             var entity = GetOrThrow(checkInId);
             var nextStatus = dto.Status.Trim();
+            EnsureValidTransition(entity.Status, nextStatus);
             entity.Status = nextStatus;
             _checkInRepo.Update(entity);
             SyncAppointmentStatus(entity.AppointmentId, MapAppointmentStatusFromCheckInStatus(nextStatus));
@@ -250,6 +251,39 @@ namespace CareSchedule.Services.Implementation
             if (status.Equals("WithProvider", StringComparison.OrdinalIgnoreCase)) return "InProgress";
             if (status.Equals("Completed", StringComparison.OrdinalIgnoreCase)) return "Completed";
             return null;
+        }
+
+        private static void EnsureValidTransition(string currentStatus, string nextStatus)
+        {
+            var current = NormalizeStatus(currentStatus);
+            var next = NormalizeStatus(nextStatus);
+
+            if (current == next) return;
+
+            // Keep pipeline strict:
+            // Waiting/CheckedIn -> RoomAssigned -> InRoom -> WithProvider -> Completed
+            var allowed = current switch
+            {
+                "checkedin" => new[] { "roomassigned" },
+                "roomassigned" => new[] { "inroom" },
+                "inroom" => new[] { "withprovider" },
+                "withprovider" => new[] { "completed" },
+                _ => Array.Empty<string>()
+            };
+
+            if (!allowed.Contains(next))
+                throw new ArgumentException("Invalid check-in status transition.");
+        }
+
+        private static string NormalizeStatus(string status)
+        {
+            var s = status.Trim().ToLowerInvariant().Replace("_", "").Replace("-", "").Replace(" ", "");
+            if (s is "waiting" or "checkedin") return "checkedin";
+            if (s == "roomassigned") return "roomassigned";
+            if (s == "inroom") return "inroom";
+            if (s is "withprovider" or "inprogress") return "withprovider";
+            if (s == "completed") return "completed";
+            return s;
         }
 
         private static CheckInResponseDto Map(CheckIn c) => new()

@@ -39,16 +39,17 @@ namespace CareSchedule.Services.Implementation
             if (dto.PublishedSlotId <= 0) throw new ArgumentException("Invalid PublishedSlotId.");
             if (dto.PatientId <= 0) throw new ArgumentException("Invalid PatientId.");
             if (string.IsNullOrWhiteSpace(dto.BookingChannel)) dto.BookingChannel = "FrontDesk";
+            var normalizedChannel = (dto.BookingChannel ?? "FrontDesk").Trim();
 
             var slot = _slotRepo.GetById(dto.PublishedSlotId);
             if (slot == null) throw new KeyNotFoundException("Slot not found.");
             if (!string.Equals(slot.Status, "Open", StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException("SLOT_UNAVAILABLE");
-            if (CombineLocal(slot.SlotDate, slot.StartTime) <= DateTime.Now)
-                throw new ArgumentException("Cannot book an appointment for past date/time.");
+            EnsureBookingLeadTime(slot.SlotDate, slot.StartTime, normalizedChannel);
             EnsureSlotDateAllowed(slot.SiteId, slot.SlotDate);
             EnsureBookingWindowByConfig(slot.SlotDate);
             EnsureBookingReferencesActive(dto.PatientId, slot.ProviderId, slot.ServiceId, slot.SiteId);
+            EnsurePatientSingleBookingPerDayForPortal(dto.PatientId, slot.SlotDate, normalizedChannel);
 
             var maxPerDay = ResolveMaxPerDay(slot.ProviderId, slot.ServiceId, slot.SiteId, slot.SlotDate);
             if (maxPerDay.HasValue)
@@ -433,6 +434,36 @@ namespace CareSchedule.Services.Implementation
             var maxDays = _configRepo.GetInt("booking.advance.max.days", null);
             if (maxDays.HasValue && daysAhead > maxDays.Value)
                 throw new ArgumentException($"Booking cannot be more than {maxDays.Value} day(s) in advance.");
+        }
+
+        private static void EnsureBookingLeadTime(DateOnly slotDate, TimeOnly slotStartTime, string bookingChannel)
+        {
+            var now = DateTime.Now;
+            var slotStart = CombineLocal(slotDate, slotStartTime);
+
+            if (string.Equals(bookingChannel, "Portal", StringComparison.OrdinalIgnoreCase))
+            {
+                if (slotStart < now.AddHours(2))
+                    throw new ArgumentException("Portal booking requires at least 2 hours lead time from now.");
+                return;
+            }
+
+            if (slotStart < now)
+                throw new ArgumentException("Cannot book an appointment for past date/time.");
+        }
+
+        private void EnsurePatientSingleBookingPerDayForPortal(int patientId, DateOnly slotDate, string bookingChannel)
+        {
+            if (!string.Equals(bookingChannel, "Portal", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var existingForDay = _apptRepo.Search(patientId, null, null, slotDate, null);
+            var hasAnotherActiveBooking = existingForDay.Any(a =>
+                !string.Equals(a.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(a.Status, "NoShow", StringComparison.OrdinalIgnoreCase));
+
+            if (hasAnotherActiveBooking)
+                throw new ArgumentException("You already have an appointment on this date. Cancel it first to book another.");
         }
 
         private void EnsureBookingReferencesActive(int patientId, int providerId, int serviceId, int siteId)

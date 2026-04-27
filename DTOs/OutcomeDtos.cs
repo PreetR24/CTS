@@ -17,5 +17,7 @@ namespace CareSchedule.DTOs
         public string? Notes { get; set; }
         public int? MarkedBy { get; set; }
         public DateTime MarkedDate { get; set; }
+        public bool HasPrescription { get; set; }
+        public string? PrescriptionFileName { get; set; }
     }
 }
