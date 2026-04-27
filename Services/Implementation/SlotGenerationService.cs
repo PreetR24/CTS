@@ -3,6 +3,7 @@ using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -56,47 +57,24 @@ namespace CareSchedule.Services.Implementation
             }
 
             var conflicts = FindConflicts(dto.TemplateId, candidates);
-            if (conflicts.Count > 0)
-            {
-                _auditService.CreateAudit(new AuditLogCreateDto
-                {
-                    Action = "GenerateSlotsCancelledConflict",
-                    Resource = "PublishedSlot",
-                    Metadata = System.Text.Json.JsonSerializer.Serialize(new
-                    {
-                        dto.TemplateId,
-                        dto.SiteId,
-                        dto.Days,
-                        conflictCount = conflicts.Count
-                    })
-                });
-                _db.SaveChanges();
+            var conflictingKeys = conflicts
+                .Select(c => $"{c.ProviderId}|{c.SiteId}|{c.Date}|{c.StartTime}|{c.EndTime}")
+                .ToHashSet(StringComparer.Ordinal);
+            var insertableCandidates = candidates
+                .Where(c => !conflictingKeys.Contains(
+                    $"{c.ProviderId}|{c.SiteId}|{c.SlotDate:yyyy-MM-dd}|{c.StartTime:HH\\:mm}|{c.EndTime:HH\\:mm}"))
+                .ToList();
 
-                return new ProviderSlotGenerationResponseDto
-                {
-                    InsertedCount = 0,
-                    SkippedExistingCount = 0,
-                    CancelledDueToConflict = true,
-                    Conflicts = conflicts
-                };
-            }
-
-            foreach (var c in candidates)
+            _slotRepo.AddRange(insertableCandidates.Select(c => new PublishedSlot
             {
-                _slotRepo.AddRange(new[]
-                {
-                    new PublishedSlot
-                    {
-                        ProviderId = c.ProviderId,
-                        SiteId = c.SiteId,
-                        ServiceId = c.ServiceId,
-                        SlotDate = c.SlotDate,
-                        StartTime = c.StartTime,
-                        EndTime = c.EndTime,
-                        Status = "Open"
-                    }
-                });
-            }
+                ProviderId = c.ProviderId,
+                SiteId = c.SiteId,
+                ServiceId = c.ServiceId,
+                SlotDate = c.SlotDate,
+                StartTime = c.StartTime,
+                EndTime = c.EndTime,
+                Status = "Open"
+            }));
 
             _auditService.CreateAudit(new AuditLogCreateDto
             {
@@ -107,15 +85,16 @@ namespace CareSchedule.Services.Implementation
                     dto.TemplateId,
                     dto.SiteId,
                     dto.Days,
-                    inserted = candidates.Count
+                    inserted = insertableCandidates.Count,
+                    skippedExisting = conflicts.Count
                 })
             });
             _db.SaveChanges();
 
             return new ProviderSlotGenerationResponseDto
             {
-                InsertedCount = candidates.Count,
-                SkippedExistingCount = 0,
+                InsertedCount = insertableCandidates.Count,
+                SkippedExistingCount = conflicts.Count,
                 CancelledDueToConflict = false
             };
         }
@@ -123,12 +102,26 @@ namespace CareSchedule.Services.Implementation
         private List<SlotGenerationConflictDto> FindConflicts(int templateId, List<SlotCandidate> candidates)
         {
             var conflicts = new List<SlotGenerationConflictDto>();
+            if (candidates.Count == 0) return conflicts;
+
+            var providerId = candidates[0].ProviderId;
+            var siteId = candidates[0].SiteId;
+            var minDate = candidates.Min(c => c.SlotDate);
+            var maxDate = candidates.Max(c => c.SlotDate);
+
+            // Load all potentially conflicting slots once, then resolve overlaps in-memory.
+            var existingSlots = _slotRepo
+                .FindBySiteDateRange(siteId, minDate, maxDate, "Open", "Held", "Closed")
+                .Where(s => s.ProviderId == providerId)
+                .ToList();
+            var existingByDate = existingSlots
+                .GroupBy(s => s.SlotDate)
+                .ToDictionary(g => g.Key, g => g.OrderBy(s => s.StartTime).ToList());
+
             foreach (var c in candidates)
             {
-                var overlapping = _slotRepo.FindSlotsInWindow(
-                    c.ProviderId, c.SiteId, c.SlotDate, c.StartTime, c.EndTime, "Open", "Held", "Closed");
-
-                var existing = overlapping.FirstOrDefault();
+                if (!existingByDate.TryGetValue(c.SlotDate, out var existingForDay)) continue;
+                var existing = existingForDay.FirstOrDefault(s => s.StartTime < c.EndTime && c.StartTime < s.EndTime);
                 if (existing == null) continue;
 
                 conflicts.Add(new SlotGenerationConflictDto
@@ -150,7 +143,7 @@ namespace CareSchedule.Services.Implementation
         private List<SlotCandidate> BuildCandidates(AvailabilityTemplate template, int days)
         {
             var candidates = new List<SlotCandidate>();
-            var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+            var today = TimeZoneHelper.TodayIst();
             var endDate = today.AddDays(days - 1);
 
             var services = _providerServiceRepo.GetActiveByProvider(template.ProviderId).ToList();

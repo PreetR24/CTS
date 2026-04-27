@@ -6,6 +6,7 @@ using CareSchedule.DTOs;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -55,7 +56,7 @@ namespace CareSchedule.Services.Implementation
         private static DateTime ParseDate(string date)
         {
             if (string.IsNullOrWhiteSpace(date))
-                return DateTime.UtcNow;
+                return TimeZoneHelper.NowIst();
 
             if (!DateTime.TryParseExact(date.Trim(), "yyyy-MM-dd",
                 CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))

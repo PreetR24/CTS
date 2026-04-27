@@ -12,6 +12,7 @@ namespace CareSchedule.Repositories.Implementation
     {
         public void Add(Appointment entity) => _db.Appointments.Add(entity);
         public void Update(Appointment entity) => _db.Appointments.Update(entity);
+        public void AddChange(AppointmentChange entity) => _db.AppointmentChanges.Add(entity);
 
         public Appointment? GetById(int appointmentId)
         {
@@ -50,6 +51,26 @@ namespace CareSchedule.Repositories.Implementation
                 a.SiteId == siteId &&
                 a.SlotDate == date &&
                 a.Status == status);
+        }
+
+        public int CountReschedulesForAppointmentOnDay(int appointmentId, DateOnly day)
+        {
+            var start = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+            var end = start.AddDays(1);
+            return _db.AppointmentChanges.Count(c =>
+                c.AppointmentId == appointmentId &&
+                c.ChangeType == "Reschedule" &&
+                c.ChangedDate >= start &&
+                c.ChangedDate < end);
+        }
+
+        public string? GetLatestRescheduleReason(int appointmentId)
+        {
+            return _db.AppointmentChanges
+                .Where(c => c.AppointmentId == appointmentId && c.ChangeType == "Reschedule")
+                .OrderByDescending(c => c.ChangedDate)
+                .Select(c => c.Reason)
+                .FirstOrDefault();
         }
     }
 }

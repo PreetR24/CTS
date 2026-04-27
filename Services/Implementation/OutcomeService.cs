@@ -4,6 +4,7 @@ using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -42,7 +43,7 @@ namespace CareSchedule.Services.Implementation
                 Outcome1 = dto.Outcome.Trim(),
                 Notes = dto.Notes,
                 MarkedBy = dto.MarkedBy,
-                MarkedDate = DateTime.UtcNow
+                MarkedDate = TimeZoneHelper.NowIst()
             };
             _outcomeRepo.Add(entity);
 
@@ -69,7 +70,7 @@ namespace CareSchedule.Services.Implementation
                 Message = $"Your appointment on {appt.SlotDate:yyyy-MM-dd} has been completed.",
                 Category = "Outcome",
                 Status = "Unread",
-                CreatedDate = DateTime.UtcNow
+                CreatedDate = TimeZoneHelper.NowIst()
             });
             _db.SaveChanges();
 

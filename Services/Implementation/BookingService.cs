@@ -5,6 +5,7 @@ using System.Linq;
 
 using CareSchedule.Services.Interface;
 using CareSchedule.DTOs;
+using CareSchedule.Shared.Time;
 
 using CareSchedule.Models;
 using CareSchedule.Infrastructure.Data;
@@ -16,7 +17,6 @@ namespace CareSchedule.Services.Implementation
     public class BookingService(
             CareScheduleContext _db,
             IAppointmentRepository _apptRepo,
-            IAppointmentChangeRepository _changeRepo,
             IPublishedSlotBookingRepository _slotRepo,
             ICalendarEventRepository _calendarRepo,
             INotificationRepository _notifRepo,
@@ -107,7 +107,7 @@ namespace CareSchedule.Services.Implementation
                     Message = $"Your appointment is booked on {appt.SlotDate:yyyy-MM-dd} at {appt.StartTime:HH\\:mm}.",
                     Category = "Appointment",
                     Status = "Unread",
-                    CreatedDate = DateTime.UtcNow
+                    CreatedDate = TimeZoneHelper.NowIst()
                 });
 
                 var offsets = new[] { 1440, 60 }; // 24h and 1h before
@@ -137,22 +137,36 @@ namespace CareSchedule.Services.Implementation
             }
         }
 
-        public AppointmentResponseDto Reschedule(int appointmentId, RescheduleAppointmentRequestDto dto)
+        public AppointmentResponseDto Reschedule(int appointmentId, RescheduleAppointmentRequestDto dto, string requesterRole)
         {
             if (appointmentId <= 0) throw new ArgumentException("Invalid AppointmentId.");
             if (dto.NewPublishedSlotId <= 0) throw new ArgumentException("Invalid NewPublishedSlotId.");
 
             var appt = _apptRepo.GetById(appointmentId);
             if (appt == null) throw new KeyNotFoundException("Appointment not found.");
-            if (appt.Status is "Completed" or "Cancelled" or "NoShow")
+            if (appt.Status is "Completed" or "Cancelled")
                 throw new ArgumentException("INVALID_TRANSITION");
+            if (appt.Status is "NoShow")
+            {
+                if (string.Equals(requesterRole, "Patient", StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException("Patients cannot reschedule NoShow appointments. Please contact FrontDesk.");
+                if (!string.Equals(requesterRole, "FrontDesk", StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException("Only FrontDesk can reschedule NoShow appointments.");
+            }
 
             var newSlot = _slotRepo.GetById(dto.NewPublishedSlotId);
             if (newSlot == null) throw new KeyNotFoundException("New slot not found.");
             if (!string.Equals(newSlot.Status, "Open", StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException("SLOT_UNAVAILABLE");
-            if (CombineLocal(newSlot.SlotDate, newSlot.StartTime) <= DateTime.Now)
+            if (CombineLocal(newSlot.SlotDate, newSlot.StartTime) <= TimeZoneHelper.NowIst())
                 throw new ArgumentException("Cannot reschedule to a past date/time.");
+            if (newSlot.SlotDate == TimeZoneHelper.TodayIst() &&
+                CombineLocal(newSlot.SlotDate, newSlot.StartTime) <= TimeZoneHelper.NowIst())
+                throw new ArgumentException("Same-day reschedule is allowed only for future time slots.");
+            var todayUtc = TimeZoneHelper.TodayIst();
+            var rescheduleCountToday = _apptRepo.CountReschedulesForAppointmentOnDay(appointmentId, todayUtc);
+            if (rescheduleCountToday >= 1)
+                throw new ArgumentException("Only 1 reschedule is allowed for this appointment in a day.");
             EnsureSlotDateAllowed(newSlot.SiteId, newSlot.SlotDate);
             EnsureBookingWindowByConfig(newSlot.SlotDate);
             EnsureBookingReferencesActive(appt.PatientId, newSlot.ProviderId, newSlot.ServiceId, newSlot.SiteId);
@@ -194,7 +208,8 @@ namespace CareSchedule.Services.Implementation
                 appt.ProviderId = newSlot.ProviderId;
                 appt.SiteId = newSlot.SiteId;
                 appt.ServiceId = newSlot.ServiceId;
-                // Status remains Booked
+                // Rescheduled appointments should re-enter active queue flow.
+                appt.Status = "Booked";
                 _apptRepo.Update(appt);
 
                 // 3) Free old slot only if it was Held
@@ -205,7 +220,7 @@ namespace CareSchedule.Services.Implementation
                 }
 
                 // 4) AppointmentChange
-                _changeRepo.Add(new AppointmentChange
+                _apptRepo.AddChange(new AppointmentChange
                 {
                     AppointmentId = appt.AppointmentId,
                     ChangeType = "Reschedule",
@@ -217,7 +232,7 @@ namespace CareSchedule.Services.Implementation
                         End = appt.EndTime.ToString("HH:mm")
                     }),
                     ChangedBy = null,
-                    ChangedDate = DateTime.UtcNow,
+                    ChangedDate = TimeZoneHelper.NowIst(),
                     Reason = dto.Reason
                 });
 
@@ -239,7 +254,7 @@ namespace CareSchedule.Services.Implementation
                     Message = $"Your appointment was rescheduled to {appt.SlotDate:yyyy-MM-dd} at {appt.StartTime:HH\\:mm}.",
                     Category = "Change",
                     Status = "Unread",
-                    CreatedDate = DateTime.UtcNow
+                    CreatedDate = TimeZoneHelper.NowIst()
                 });
 
                 // 7) Audit
@@ -283,14 +298,14 @@ namespace CareSchedule.Services.Implementation
                 }
 
                 // 3) AppointmentChange
-                _changeRepo.Add(new AppointmentChange
+                _apptRepo.AddChange(new AppointmentChange
                 {
                     AppointmentId = appt.AppointmentId,
                     ChangeType = "Cancel",
                     OldValuesJson = System.Text.Json.JsonSerializer.Serialize(new { appt.SlotDate, Start = appt.StartTime.ToString("HH:mm"), End = appt.EndTime.ToString("HH:mm") }),
                     NewValuesJson = null,
                     ChangedBy = null,
-                    ChangedDate = DateTime.UtcNow,
+                    ChangedDate = TimeZoneHelper.NowIst(),
                     Reason = dto.Reason
                 });
 
@@ -325,7 +340,7 @@ namespace CareSchedule.Services.Implementation
                         Message = $"A slot has opened up for your waitlisted appointment with provider {appt.ProviderId} on {appt.SlotDate:yyyy-MM-dd}.",
                         Category = "Waitlist",
                         Status = "Unread",
-                        CreatedDate = DateTime.UtcNow
+                        CreatedDate = TimeZoneHelper.NowIst()
                     });
                 }
 
@@ -336,7 +351,7 @@ namespace CareSchedule.Services.Implementation
                     Message = $"Your appointment on {appt.SlotDate:yyyy-MM-dd} at {appt.StartTime:HH\\:mm} has been cancelled.",
                     Category = "Change",
                     Status = "Unread",
-                    CreatedDate = DateTime.UtcNow
+                    CreatedDate = TimeZoneHelper.NowIst()
                 });
 
                 // 8) Audit
@@ -356,7 +371,7 @@ namespace CareSchedule.Services.Implementation
         {
             var a = _apptRepo.GetById(appointmentId);
             if (a == null) throw new KeyNotFoundException("Appointment not found.");
-            return Map(a);
+            return EnrichRescheduleTraceability(Map(a));
         }
 
         public IEnumerable<AppointmentResponseDto> Search(AppointmentSearchRequestDto dto)
@@ -370,7 +385,7 @@ namespace CareSchedule.Services.Implementation
             }
 
             var items = _apptRepo.Search(dto.PatientId, dto.ProviderId, dto.SiteId, d, dto.Status);
-            return items.Select(Map).ToList();
+            return items.Select(x => EnrichRescheduleTraceability(Map(x))).ToList();
         }
 
         // ------------------- helpers -------------------
@@ -398,12 +413,12 @@ namespace CareSchedule.Services.Implementation
 
         private static DateTime CombineUtc(DateOnly date, TimeOnly time)
         {
-            return new DateTime(date.Year, date.Month, date.Day, time.Hour, time.Minute, 0, DateTimeKind.Utc);
+            return new DateTime(date.Year, date.Month, date.Day, time.Hour, time.Minute, 0, DateTimeKind.Unspecified);
         }
 
         private static DateTime CombineLocal(DateOnly date, TimeOnly time)
         {
-            return new DateTime(date.Year, date.Month, date.Day, time.Hour, time.Minute, 0, DateTimeKind.Local);
+            return new DateTime(date.Year, date.Month, date.Day, time.Hour, time.Minute, 0, DateTimeKind.Unspecified);
         }
 
         private void EnsureSlotDateAllowed(int siteId, DateOnly date)
@@ -424,7 +439,7 @@ namespace CareSchedule.Services.Implementation
 
         private void EnsureBookingWindowByConfig(DateOnly slotDate)
         {
-            var today = DateOnly.FromDateTime(DateTime.Now.Date);
+            var today = TimeZoneHelper.TodayIst();
             var daysAhead = slotDate.DayNumber - today.DayNumber;
 
             var minDays = _configRepo.GetInt("booking.advance.min.days", null);
@@ -438,7 +453,7 @@ namespace CareSchedule.Services.Implementation
 
         private static void EnsureBookingLeadTime(DateOnly slotDate, TimeOnly slotStartTime, string bookingChannel)
         {
-            var now = DateTime.Now;
+            var now = TimeZoneHelper.NowIst();
             var slotStart = CombineLocal(slotDate, slotStartTime);
 
             if (string.Equals(bookingChannel, "Portal", StringComparison.OrdinalIgnoreCase))
@@ -545,6 +560,16 @@ namespace CareSchedule.Services.Implementation
             if (appt == null) throw new KeyNotFoundException("Appointment not found.");
             if (appt.Status is "Completed" or "Cancelled" or "NoShow")
                 throw new ArgumentException("INVALID_TRANSITION");
+            var appointmentStartUtc = new DateTime(
+                appt.SlotDate.Year,
+                appt.SlotDate.Month,
+                appt.SlotDate.Day,
+                appt.StartTime.Hour,
+                appt.StartTime.Minute,
+                0,
+                DateTimeKind.Unspecified);
+            if (TimeZoneHelper.NowIst() < appointmentStartUtc)
+                throw new ArgumentException("NoShow can only be marked after appointment start time.");
 
             appt.Status = "NoShow";
             _apptRepo.Update(appt);
@@ -580,7 +605,7 @@ namespace CareSchedule.Services.Implementation
                 Message = $"Your appointment on {appt.SlotDate:yyyy-MM-dd} has been cancelled by the provider.",
                 Category = "Change",
                 Status = "Unread",
-                CreatedDate = DateTime.UtcNow
+                CreatedDate = TimeZoneHelper.NowIst()
             });
 
             _auditService.CreateAudit(new AuditLogCreateDto
@@ -613,6 +638,14 @@ namespace CareSchedule.Services.Implementation
                 Status = a.Status,
                 BookingChannel = a.BookingChannel
             };
+        }
+
+        private AppointmentResponseDto EnrichRescheduleTraceability(AppointmentResponseDto dto)
+        {
+            var todayUtc = TimeZoneHelper.TodayIst();
+            dto.RescheduleCountToday = _apptRepo.CountReschedulesForAppointmentOnDay(dto.AppointmentId, todayUtc);
+            dto.LastRescheduleReason = _apptRepo.GetLatestRescheduleReason(dto.AppointmentId);
+            return dto;
         }
     }
 }

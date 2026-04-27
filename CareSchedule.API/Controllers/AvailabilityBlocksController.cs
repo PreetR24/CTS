@@ -19,6 +19,14 @@ namespace CareSchedule.API.Controllers
             return ApiResponse<IdResponseDto>.Ok(new IdResponseDto { Id = id }, "Block created.");
         }
 
+        [HttpPut("{blockId:int}")]
+        [Authorize(Roles = "Provider,Admin")]
+        public ActionResult<ApiResponse<object>> Update(int blockId, [FromBody] CreateAvailabilityBlockRequestDto dto)
+        {
+            _availabilityservice.UpdateBlock(blockId, dto);
+            return ApiResponse<object>.Ok(null, "Block updated.");
+        }
+
         [HttpDelete("{blockId:int}")]
         [Authorize(Roles = "Provider,Admin")]
         public ActionResult<ApiResponse<object>> Delete(int blockId)

@@ -7,6 +7,7 @@ using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -242,7 +243,7 @@ namespace CareSchedule.Services.Implementation
 
             entity.Status = "Published";
             entity.PublishedBy = dto.PublishedBy;
-            entity.PublishedDate = DateTime.UtcNow;
+            entity.PublishedDate = TimeZoneHelper.NowIst();
             _rosterRepo.Update(entity);
 
             var assignments = _assignRepo.Search(null, null, null, null)
@@ -258,7 +259,7 @@ namespace CareSchedule.Services.Implementation
                     Message = $"Roster for {entity.PeriodStart:MMM dd} - {entity.PeriodEnd:MMM dd} has been published. Check your assignments.",
                     Category = "Roster",
                     Status = "Unread",
-                    CreatedDate = DateTime.UtcNow
+                    CreatedDate = TimeZoneHelper.NowIst()
                 });
             }
 
@@ -390,7 +391,7 @@ namespace CareSchedule.Services.Implementation
                 Message = $"Your shift on {entity.Date:yyyy-MM-dd} has been swapped.",
                 Category = "Roster",
                 Status = "Unread",
-                CreatedDate = DateTime.UtcNow
+                CreatedDate = TimeZoneHelper.NowIst()
             });
 
             if (dto.NewUserId.HasValue && dto.NewUserId.Value != oldUserId)
@@ -401,7 +402,7 @@ namespace CareSchedule.Services.Implementation
                     Message = $"You have been assigned a swapped shift on {entity.Date:yyyy-MM-dd}.",
                     Category = "Roster",
                     Status = "Unread",
-                    CreatedDate = DateTime.UtcNow
+                    CreatedDate = TimeZoneHelper.NowIst()
                 });
             }
 
@@ -452,7 +453,7 @@ namespace CareSchedule.Services.Implementation
         {
             EnsureSiteActive(dto.SiteId);
             var date = ParseDate(dto.Date, "Date");
-            if (date < DateOnly.FromDateTime(DateTime.UtcNow.Date))
+            if (date < TimeZoneHelper.TodayIst())
                 throw new ArgumentException("On-call coverage cannot be created for a past date.");
             var start = ParseTime(dto.StartTime, "StartTime");
             var end = ParseTime(dto.EndTime, "EndTime");
@@ -510,7 +511,7 @@ namespace CareSchedule.Services.Implementation
                 entity.BackupUserId = dto.BackupUserId.Value <= 0 ? null : dto.BackupUserId.Value;
             }
             if (dto.Status != null) entity.Status = dto.Status;
-            if (entity.Date < DateOnly.FromDateTime(DateTime.UtcNow.Date))
+            if (entity.Date < TimeZoneHelper.TodayIst())
                 throw new ArgumentException("On-call coverage cannot be updated for a past date.");
 
             if (entity.StartTime >= entity.EndTime)
@@ -624,8 +625,8 @@ namespace CareSchedule.Services.Implementation
             Date = e.Date.ToString("yyyy-MM-dd"),
             StartTime = e.StartTime.ToString("HH:mm"),
             EndTime = e.EndTime.ToString("HH:mm"),
-            StartDateTimeUtc = new DateTime(e.Date.Year, e.Date.Month, e.Date.Day, e.StartTime.Hour, e.StartTime.Minute, 0, DateTimeKind.Utc),
-            EndDateTimeUtc = new DateTime(e.Date.Year, e.Date.Month, e.Date.Day, e.EndTime.Hour, e.EndTime.Minute, 0, DateTimeKind.Utc),
+            StartDateTimeUtc = new DateTime(e.Date.Year, e.Date.Month, e.Date.Day, e.StartTime.Hour, e.StartTime.Minute, 0, DateTimeKind.Unspecified),
+            EndDateTimeUtc = new DateTime(e.Date.Year, e.Date.Month, e.Date.Day, e.EndTime.Hour, e.EndTime.Minute, 0, DateTimeKind.Unspecified),
             PrimaryUserId = e.PrimaryUserId,
             BackupUserId = e.BackupUserId,
             Status = e.Status

@@ -8,6 +8,7 @@ using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -34,7 +35,7 @@ namespace CareSchedule.Services.Implementation
             var endDate = ParseDate(dto.EndDate, "EndDate");
             if (startDate > endDate)
                 throw new ArgumentException("StartDate must be on or before EndDate.");
-            if (startDate < DateOnly.FromDateTime(DateTime.UtcNow.Date))
+            if (startDate < TimeZoneHelper.TodayIst())
                 throw new ArgumentException("StartDate cannot be in the past.");
 
             var overlapping = _leaveRepo.Search(userId, null)
@@ -50,7 +51,7 @@ namespace CareSchedule.Services.Implementation
                 StartDate = startDate,
                 EndDate = endDate,
                 Reason = dto.Reason,
-                SubmittedDate = DateTime.UtcNow,
+                SubmittedDate = TimeZoneHelper.NowIst(),
                 Status = "Pending"
             };
 
@@ -190,7 +191,7 @@ namespace CareSchedule.Services.Implementation
                 Message = $"Your leave request ({entity.LeaveType}) from {entity.StartDate:yyyy-MM-dd} to {entity.EndDate:yyyy-MM-dd} has been rejected.",
                 Category = "Leave",
                 Status = "Unread",
-                CreatedDate = DateTime.UtcNow
+                CreatedDate = TimeZoneHelper.NowIst()
             });
 
             _auditService.CreateAudit(new AuditLogCreateDto
@@ -253,7 +254,7 @@ namespace CareSchedule.Services.Implementation
 
             entity.Status = "Resolved";
             entity.ResolvedBy = dto.ResolvedBy;
-            entity.ResolvedDate = DateTime.UtcNow;
+            entity.ResolvedDate = TimeZoneHelper.NowIst();
             _impactRepo.Update(entity);
 
             _auditService.CreateAudit(new AuditLogCreateDto
@@ -335,7 +336,7 @@ namespace CareSchedule.Services.Implementation
                             Message = $"Your appointment on {appt.SlotDate:yyyy-MM-dd} may need to be rescheduled due to provider leave.",
                             Category = "Appointment",
                             Status = "Unread",
-                            CreatedDate = DateTime.UtcNow
+                            CreatedDate = TimeZoneHelper.NowIst()
                         });
                     }
                 }

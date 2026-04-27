@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.API.BackgroundServices
 {
@@ -42,7 +43,7 @@ namespace CareSchedule.API.BackgroundServices
             var notifRepo = scope.ServiceProvider.GetRequiredService<INotificationRepository>();
             var db = scope.ServiceProvider.GetRequiredService<CareScheduleContext>();
 
-            var now = DateTime.UtcNow;
+            var now = TimeZoneHelper.NowIst();
             var dueReminders = reminderRepo.GetDueReminders(now);
 
             var count = 0;
@@ -57,7 +58,7 @@ namespace CareSchedule.API.BackgroundServices
                     Message = $"Reminder: You have an appointment on {appt.SlotDate:yyyy-MM-dd} at {appt.StartTime:HH\\:mm}.",
                     Category = "Appointment",
                     Status = "Unread",
-                    CreatedDate = DateTime.UtcNow
+                    CreatedDate = TimeZoneHelper.NowIst()
                 });
 
                 reminder.Status = "Sent";

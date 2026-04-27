@@ -2,6 +2,7 @@ using CareSchedule.DTOs;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -167,7 +168,7 @@ namespace CareSchedule.Services.Implementation
                 normalized = "provider";
             }
 
-            return $"{normalized}.{DateTime.UtcNow.Ticks}@careschedule.local";
+            return $"{normalized}.{TimeZoneHelper.NowIst().Ticks}@careschedule.local";
         }
     }
 }

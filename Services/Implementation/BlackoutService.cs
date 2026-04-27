@@ -64,8 +64,8 @@ namespace CareSchedule.Services.Implementation
                     ProviderId = null,
                     SiteId = dto.SiteId,
                     RoomId = null,
-                    StartTime = new DateTime(day.Year, day.Month, day.Day, 0, 0, 0, DateTimeKind.Utc),
-                    EndTime = new DateTime(day.Year, day.Month, day.Day, 23, 59, 0, DateTimeKind.Utc),
+                    StartTime = new DateTime(day.Year, day.Month, day.Day, 0, 0, 0, DateTimeKind.Unspecified),
+                    EndTime = new DateTime(day.Year, day.Month, day.Day, 23, 59, 0, DateTimeKind.Unspecified),
                     Status = "Active"
                 });
             }
@@ -139,8 +139,8 @@ namespace CareSchedule.Services.Implementation
                     ProviderId = null,
                     SiteId = entity.SiteId,
                     RoomId = null,
-                    StartTime = new DateTime(day.Year, day.Month, day.Day, 0, 0, 0, DateTimeKind.Utc),
-                    EndTime = new DateTime(day.Year, day.Month, day.Day, 23, 59, 0, DateTimeKind.Utc),
+                    StartTime = new DateTime(day.Year, day.Month, day.Day, 0, 0, 0, DateTimeKind.Unspecified),
+                    EndTime = new DateTime(day.Year, day.Month, day.Day, 23, 59, 0, DateTimeKind.Unspecified),
                     Status = "Active"
                 });
             }

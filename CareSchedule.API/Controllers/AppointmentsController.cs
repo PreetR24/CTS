@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using CareSchedule.API.Contracts;
+using CareSchedule.API.Extensions;
 using CareSchedule.DTOs;
 using CareSchedule.Services.Interface;
 
@@ -23,7 +24,7 @@ namespace CareSchedule.API.Controllers
         [Authorize(Roles = "FrontDesk,Patient,Admin")]
         public ActionResult<ApiResponse<AppointmentResponseDto>> Reschedule(int appointmentId, [FromBody] RescheduleAppointmentRequestDto dto)
         {
-            var result = _bookingservice.Reschedule(appointmentId, dto);
+            var result = _bookingservice.Reschedule(appointmentId, dto, User.GetRole());
             return ApiResponse<AppointmentResponseDto>.Ok(result, "Appointment rescheduled.");
         }
 
@@ -66,7 +67,7 @@ namespace CareSchedule.API.Controllers
         }
 
         [HttpPatch("{appointmentId:int}/no-show")]
-        [Authorize(Roles = "Provider,Admin")]
+        [Authorize(Roles = "FrontDesk,Provider,Admin")]
         public ActionResult<ApiResponse<object>> MarkNoShow(int appointmentId)
         {
             _bookingservice.MarkNoShow(appointmentId);

@@ -6,6 +6,7 @@ using CareSchedule.DTOs;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -13,8 +14,7 @@ namespace CareSchedule.Services.Implementation
     {
         private static string Iso(DateTime utc)
         {
-            return DateTime.SpecifyKind(utc, DateTimeKind.Utc)
-                           .ToString("o", CultureInfo.InvariantCulture);
+            return utc.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
         }
 
         public List<SystemConfigDto> Search(SystemConfigSearchQuery q)
@@ -58,7 +58,7 @@ namespace CareSchedule.Services.Implementation
                 Value = dto.Value.Trim(),
                 Scope = normalizedScope,
                 UpdatedBy = dto.UpdatedBy,
-                UpdatedDate = DateTime.UtcNow
+                UpdatedDate = TimeZoneHelper.NowIst()
             };
 
             e = _systemconfigrepo.Create(e);
@@ -74,7 +74,7 @@ namespace CareSchedule.Services.Implementation
             if (!string.IsNullOrWhiteSpace(dto.Scope)) e.Scope = dto.Scope.Trim();
             if (dto.UpdatedBy.HasValue) e.UpdatedBy = dto.UpdatedBy;
 
-            e.UpdatedDate = DateTime.UtcNow;
+            e.UpdatedDate = TimeZoneHelper.NowIst();
             _systemconfigrepo.Update(e);
 
             return Map(e);

@@ -4,6 +4,7 @@ using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
 using System.Collections.Generic;
 using System;
+using System.Text.RegularExpressions;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -30,6 +31,15 @@ namespace CareSchedule.Services.Implementation
             if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Name is required.");
             if (string.IsNullOrWhiteSpace(dto.Role)) throw new ArgumentException("Role is required.");
             if (string.IsNullOrWhiteSpace(dto.Email)) throw new ArgumentException("Email is required.");
+            if (!string.IsNullOrWhiteSpace(dto.Phone) && !Regex.IsMatch(dto.Phone.Trim(), @"^\d{10}$"))
+                throw new ArgumentException("Phone number must be exactly 10 digits.");
+            if (string.Equals(dto.Role, "Provider", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(dto.Specialty))
+                    throw new ArgumentException("Specialty is required for Provider.");
+                if (string.IsNullOrWhiteSpace(dto.Credentials))
+                    throw new ArgumentException("Credentials are required for Provider.");
+            }
 
             var e = new User
             {
@@ -67,7 +77,12 @@ namespace CareSchedule.Services.Implementation
             if (!string.IsNullOrWhiteSpace(dto.Name)) e.Name = dto.Name.Trim();
             if (!string.IsNullOrWhiteSpace(dto.Role)) e.Role = dto.Role.Trim();
             if (!string.IsNullOrWhiteSpace(dto.Email)) e.Email = dto.Email.Trim();
-            if (dto.Phone is not null) e.Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim();
+            if (dto.Phone is not null)
+            {
+                if (!string.IsNullOrWhiteSpace(dto.Phone) && !Regex.IsMatch(dto.Phone.Trim(), @"^\d{10}$"))
+                    throw new ArgumentException("Phone number must be exactly 10 digits.");
+                e.Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim();
+            }
             _userrepo.Update(e);
             return Map(e);
         }

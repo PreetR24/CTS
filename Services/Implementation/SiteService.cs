@@ -3,6 +3,7 @@ using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -38,10 +39,12 @@ namespace CareSchedule.Services.Implementation
         public SiteDto CreateSite(SiteCreateDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Name is required.");
+            if (!Regex.IsMatch(dto.Name, "[A-Za-z]")) throw new ArgumentException("Site name must contain at least one letter.");
+            if (string.IsNullOrWhiteSpace(dto.AddressJson)) throw new ArgumentException("Address is required.");
             var e = new Site
             {
                 Name = dto.Name.Trim(),
-                AddressJson = dto.AddressJson,
+                AddressJson = dto.AddressJson.Trim(),
                 Timezone = string.IsNullOrWhiteSpace(dto.Timezone) ? "UTC" : dto.Timezone.Trim(),
                 Status = "Active"
             };
@@ -62,7 +65,11 @@ namespace CareSchedule.Services.Implementation
             var e = _siterepo.Get(id);
             if (e is null) throw new KeyNotFoundException("Site not found.");
 
-            if (!string.IsNullOrWhiteSpace(dto.Name)) e.Name = dto.Name.Trim();
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+            {
+                if (!Regex.IsMatch(dto.Name, "[A-Za-z]")) throw new ArgumentException("Site name must contain at least one letter.");
+                e.Name = dto.Name.Trim();
+            }
             if (dto.AddressJson is not null) e.AddressJson = dto.AddressJson;
             if (!string.IsNullOrWhiteSpace(dto.Timezone)) e.Timezone = dto.Timezone.Trim();
 

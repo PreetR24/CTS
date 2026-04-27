@@ -24,5 +24,18 @@ namespace CareSchedule.Shared.Time
         /// Convert any DateTimeOffset (with any offset) to UTC DateTime for storage.
         /// </summary>
         public static DateTime ToUtc(DateTimeOffset any) => any.UtcDateTime;
+
+        /// <summary>
+        /// Returns current IST local wall-clock time (DateTime).
+        /// </summary>
+        public static DateTime NowIst()
+        {
+            return TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, GetIstTimeZone()).DateTime;
+        }
+
+        /// <summary>
+        /// Returns current IST calendar date.
+        /// </summary>
+        public static DateOnly TodayIst() => DateOnly.FromDateTime(NowIst());
     }
 }

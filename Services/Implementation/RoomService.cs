@@ -3,6 +3,7 @@ using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -44,7 +45,13 @@ namespace CareSchedule.Services.Implementation
         public RoomDto CreateRoom(RoomCreateDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.RoomName)) throw new ArgumentException("RoomName is required.");
+            if (dto.RoomName.Trim().Length < 1) throw new ArgumentException("RoomName must be at least 1 character.");
+            if (!Regex.IsMatch(dto.RoomName, "[A-Za-z]")) throw new ArgumentException("RoomName must contain at least one letter.");
             if (dto.SiteId <= 0) throw new ArgumentException("SiteId is required.");
+            if (!string.IsNullOrWhiteSpace(dto.RoomType) && dto.RoomType.Trim().Length < 1)
+                throw new ArgumentException("RoomType must be at least 1 character.");
+            if (!string.IsNullOrWhiteSpace(dto.RoomType) && !Regex.IsMatch(dto.RoomType.Trim(), @"^[A-Za-z\s]+$"))
+                throw new ArgumentException("RoomType must contain only letters.");
             EnsureSiteActive(dto.SiteId);
 
             var e = new Room
@@ -72,8 +79,18 @@ namespace CareSchedule.Services.Implementation
             var e = _roomrepo.Get(id);
             if (e is null) throw new KeyNotFoundException("Room not found.");
 
-            if (!string.IsNullOrWhiteSpace(dto.RoomName)) e.RoomName = dto.RoomName.Trim();
-            if (!string.IsNullOrWhiteSpace(dto.RoomType)) e.RoomType = dto.RoomType.Trim();
+            if (dto.RoomName is not null)
+            {
+                if (string.IsNullOrWhiteSpace(dto.RoomName)) throw new ArgumentException("RoomName cannot be empty.");
+                if (!Regex.IsMatch(dto.RoomName, "[A-Za-z]")) throw new ArgumentException("RoomName must contain at least one letter.");
+                e.RoomName = dto.RoomName.Trim();
+            }
+            if (dto.RoomType is not null)
+            {
+                if (string.IsNullOrWhiteSpace(dto.RoomType)) throw new ArgumentException("RoomType cannot be empty.");
+                if (!Regex.IsMatch(dto.RoomType.Trim(), @"^[A-Za-z\s]+$")) throw new ArgumentException("RoomType must contain only letters.");
+                e.RoomType = dto.RoomType.Trim();
+            }
             if (dto.SiteId.HasValue)
             {
                 EnsureSiteActive(dto.SiteId.Value);

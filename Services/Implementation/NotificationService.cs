@@ -6,6 +6,7 @@ using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -52,7 +53,7 @@ namespace CareSchedule.Services.Implementation
                 Message = message,
                 Category = category,
                 Status = "Unread",
-                CreatedDate = DateTime.UtcNow
+                CreatedDate = TimeZoneHelper.NowIst()
             };
             _notifRepo.Add(entity);
             _db.SaveChanges();

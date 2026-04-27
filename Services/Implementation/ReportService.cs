@@ -8,6 +8,7 @@ using CareSchedule.Infrastructure.Data;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -22,7 +23,7 @@ namespace CareSchedule.Services.Implementation
             {
                 Scope = dto.Scope.Trim(),
                 MetricsJson = dto.MetricsJson,
-                GeneratedDate = DateTime.UtcNow
+                GeneratedDate = TimeZoneHelper.NowIst()
             };
             _reportRepo.Add(entity);
             _db.SaveChanges();
@@ -52,7 +53,7 @@ namespace CareSchedule.Services.Implementation
             foreach (var r in rows)
             {
                 var metrics = (r.MetricsJson ?? string.Empty).Replace("\"", "\"\"");
-                sb.AppendLine($"{r.ReportId},{r.Scope},{r.GeneratedDate:yyyy-MM-ddTHH:mm:ssZ},\"{metrics}\"");
+                sb.AppendLine($"{r.ReportId},{r.Scope},{r.GeneratedDate:yyyy-MM-ddTHH:mm:ss},\"{metrics}\"");
             }
             return Encoding.UTF8.GetBytes(sb.ToString());
         }

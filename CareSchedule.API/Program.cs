@@ -49,7 +49,6 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Booking repos
 builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
-builder.Services.AddScoped<IAppointmentChangeRepository, AppointmentChangeRepository>();
 builder.Services.AddScoped<IPublishedSlotBookingRepository, PublishedSlotBookingRepository>();
 builder.Services.AddScoped<ICalendarEventRepository, CalendarEventRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();

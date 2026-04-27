@@ -11,6 +11,7 @@ namespace CareSchedule.DTOs
     {
         public int CheckInId { get; set; }
         public int AppointmentId { get; set; }
+        public string? PatientName { get; set; }
         public string? TokenNo { get; set; }
         public DateTime CheckInTime { get; set; }
         public int? RoomAssigned { get; set; }

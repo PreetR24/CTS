@@ -6,6 +6,7 @@ using CareSchedule.DTOs;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -41,7 +42,7 @@ namespace CareSchedule.Services.Implementation
             if (!string.Equals(patient.Status, "Active", StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException($"Patient {dto.PatientId} is not active.");
 
-            DateOnly reqDate = DateOnly.FromDateTime(DateTime.UtcNow);
+            DateOnly reqDate = TimeZoneHelper.TodayIst();
             if (!string.IsNullOrWhiteSpace(dto.RequestedDate))
             {
                 if (!DateOnly.TryParseExact(dto.RequestedDate.Trim(), "yyyy-MM-dd",

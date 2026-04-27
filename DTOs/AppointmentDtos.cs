@@ -31,6 +31,8 @@ namespace CareSchedule.DTOs
         public string EndTime { get; set; } = "";   // "HH:mm"
         public string Status { get; set; } = "";    // Booked | CheckedIn | Completed | Cancelled | NoShow
         public string BookingChannel { get; set; } = "";
+        public int RescheduleCountToday { get; set; }
+        public string? LastRescheduleReason { get; set; }
     }
 
     // ----------------------------

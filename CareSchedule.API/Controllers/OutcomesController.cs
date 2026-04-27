@@ -6,6 +6,7 @@ using CareSchedule.API.Extensions;
 using CareSchedule.DTOs;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.API.Controllers
 {
@@ -95,7 +96,7 @@ namespace CareSchedule.API.Controllers
                 System.IO.File.Delete(oldPath);
 
             var safeOriginal = SafeFileName(file.FileName);
-            var finalName = $"appointment-{appointmentId}-{DateTime.UtcNow:yyyyMMddHHmmss}-{safeOriginal}";
+            var finalName = $"appointment-{appointmentId}-{TimeZoneHelper.NowIst():yyyyMMddHHmmss}-{safeOriginal}";
             var savePath = Path.Combine(PrescriptionFolder, finalName);
 
             await using (var stream = System.IO.File.Create(savePath))

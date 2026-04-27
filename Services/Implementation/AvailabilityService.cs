@@ -6,6 +6,7 @@ using CareSchedule.Services.Interface;
 using CareSchedule.DTOs;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Infrastructure.Data;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -34,6 +35,7 @@ namespace CareSchedule.Services.Implementation
             IProviderServiceRepository _providerServiceRepo,
             IBlackoutRepository _blackoutRepo,
             IHolidayRepository _holidayRepo,
+            IAppointmentRepository _appointmentRepo,
             CareScheduleContext _db)
             : IAvailabilityService
     {
@@ -216,8 +218,9 @@ namespace CareSchedule.Services.Implementation
             var start = ParseTimeOnly(dto.StartTime); // TimeOnly
             var end   = ParseTimeOnly(dto.EndTime);   // TimeOnly
             if (end <= start) throw new ArgumentException("EndTime must be after StartTime.");
-            if (date < DateOnly.FromDateTime(DateTime.UtcNow.Date))
+            if (date < TimeZoneHelper.TodayIst())
                 throw new ArgumentException("Cannot create availability block for a past date.");
+            EnsureNoAppointmentOverlap(dto.ProviderId, dto.SiteId, date, start, end);
 
             // ---------- 1) Strict overlap rejection (no merge) ----------
             var sameDayActiveBlocks = _blockRepo
@@ -310,6 +313,101 @@ namespace CareSchedule.Services.Implementation
 
             _db.SaveChanges();
             return block.BlockId;
+        }
+
+        public void UpdateBlock(int blockId, CreateAvailabilityBlockRequestDto dto)
+        {
+            if (blockId <= 0) throw new ArgumentException("Invalid BlockID.");
+            ValidateBlockDto(dto);
+            EnsureProviderActive(dto.ProviderId);
+            EnsureSiteActive(dto.SiteId);
+
+            var block = _blockRepo.GetById(blockId);
+            if (block == null) throw new KeyNotFoundException("Block not found.");
+            if (!string.Equals(block.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Only active blocks can be edited.");
+
+            var oldDate = block.Date;
+            var oldStart = block.StartTime;
+            var oldEnd = block.EndTime;
+
+            var newDate = ParseDateOnly(dto.Date);
+            var newStart = ParseTimeOnly(dto.StartTime);
+            var newEnd = ParseTimeOnly(dto.EndTime);
+            if (newEnd <= newStart) throw new ArgumentException("EndTime must be after StartTime.");
+            EnsureNoAppointmentOverlap(dto.ProviderId, dto.SiteId, newDate, newStart, newEnd);
+
+            var overlap = _blockRepo.List(dto.ProviderId, dto.SiteId, newDate)
+                .Where(b => b.BlockId != blockId && string.Equals(b.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                .Any(b => b.StartTime < newEnd && newStart < b.EndTime);
+            if (overlap) throw new ArgumentException("Cannot update block: overlaps another active block.");
+
+            block.ProviderId = dto.ProviderId;
+            block.SiteId = dto.SiteId;
+            block.Date = newDate;
+            block.StartTime = newStart;
+            block.EndTime = newEnd;
+            block.Reason = dto.Reason?.Trim() ?? string.Empty;
+            _blockRepo.Update(block);
+
+            _calendarRepo.DeleteByEntity("Block", blockId);
+            _calendarRepo.Add(new CalendarEvent
+            {
+                EntityType = "Block",
+                EntityId = block.BlockId,
+                ProviderId = block.ProviderId,
+                SiteId = block.SiteId,
+                RoomId = null,
+                StartTime = CombineUtc(newDate, newStart),
+                EndTime = CombineUtc(newDate, newEnd),
+                Status = "Active"
+            });
+
+            var oldWindowSlots = _slotRepo.FindSlotsInWindow(block.ProviderId, block.SiteId, oldDate, oldStart, oldEnd, "Closed");
+            var activeBlocksForOldDate = _blockRepo.List(block.ProviderId, block.SiteId, oldDate)
+                .Where(b => b.BlockId != blockId && string.Equals(b.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            foreach (var s in oldWindowSlots)
+            {
+                var overlapsAnyRemainingBlock = activeBlocksForOldDate.Any(b => b.StartTime < s.EndTime && s.StartTime < b.EndTime);
+                var overlapsUpdatedBlock = s.SlotDate == newDate && newStart < s.EndTime && s.StartTime < newEnd;
+                if (!overlapsAnyRemainingBlock && !overlapsUpdatedBlock)
+                {
+                    s.Status = "Open";
+                    _slotRepo.Update(s);
+                }
+            }
+
+            var newOverlappingSlots = _slotRepo.FindSlotsInWindow(block.ProviderId, block.SiteId, newDate, newStart, newEnd, "Open", "Held");
+            foreach (var s in newOverlappingSlots)
+            {
+                s.Status = "Closed";
+                _slotRepo.Update(s);
+            }
+
+            _auditService.CreateAudit(new AuditLogCreateDto
+            {
+                Action = "UpdateAvailabilityBlock",
+                Resource = "AvailabilityBlock",
+                Metadata = SerializeJson(new
+                {
+                    blockId = block.BlockId,
+                    before = new
+                    {
+                        date = oldDate.ToString("yyyy-MM-dd"),
+                        start = oldStart.ToString(@"HH\:mm"),
+                        end = oldEnd.ToString(@"HH\:mm")
+                    },
+                    after = new
+                    {
+                        date = newDate.ToString("yyyy-MM-dd"),
+                        start = newStart.ToString(@"HH\:mm"),
+                        end = newEnd.ToString(@"HH\:mm")
+                    }
+                })
+            });
+
+            _db.SaveChanges();
         }
 
         public void RemoveBlock(int blockId)
@@ -728,7 +826,7 @@ namespace CareSchedule.Services.Implementation
             var skipped  = 0;
 
             var templates = _templateRepo.ListBySiteActive(dto.SiteId).ToList();
-            var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+            var today = TimeZoneHelper.TodayIst();
             var endDate = today.AddDays(dto.Days - 1);
 
             var holidays = _holidayRepo.Search(dto.SiteId, null, today, endDate, "Active", 1, 9999, null, null).Items;
@@ -779,15 +877,16 @@ namespace CareSchedule.Services.Implementation
                                 continue;
                             }
 
-                            // Idempotency: also compare ServiceId now
+                            // Shared time lock model:
+                            // if any service already has a slot for this provider/site/time,
+                            // do not create another service slot in the same window.
                             var overlaps = _slotRepo.FindSlotsInWindow(t.ProviderId, t.SiteId, day, current, next,
                                 "Open", "Held", "Closed");
 
                             var exact = overlaps.Any(s =>
                                 s.SlotDate == day &&
                                 s.StartTime == current &&
-                                s.EndTime == next &&
-                                s.ServiceId == ps.ServiceId); // <<< include ServiceId
+                                s.EndTime == next);
 
                             if (!exact)
                             {
@@ -836,7 +935,7 @@ namespace CareSchedule.Services.Implementation
         private List<SlotCandidate> BuildCandidatesFromTemplate(AvailabilityTemplate template, int days)
         {
             var candidates = new List<SlotCandidate>();
-            var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+            var today = TimeZoneHelper.TodayIst();
             var endDate = today.AddDays(days - 1);
 
             var services = _providerServiceRepo.GetActiveByProvider(template.ProviderId).ToList();
@@ -943,7 +1042,7 @@ namespace CareSchedule.Services.Implementation
 
         private static DateTime CombineUtc(DateOnly date, TimeOnly time)
         {
-            return new DateTime(date.Year, date.Month, date.Day, time.Hour, time.Minute, 0, DateTimeKind.Utc);
+            return new DateTime(date.Year, date.Month, date.Day, time.Hour, time.Minute, 0, DateTimeKind.Unspecified);
         }
 
         private static string SerializeJson(object obj)
@@ -1004,6 +1103,26 @@ namespace CareSchedule.Services.Implementation
             var overlaps = templates.Any(t => t.StartTime < end && start < t.EndTime);
             if (overlaps)
                 throw new ArgumentException("An active template already exists for this day and time range.");
+        }
+
+        private void EnsureNoAppointmentOverlap(int providerId, int siteId, DateOnly date, TimeOnly start, TimeOnly end)
+        {
+            var appointments = _appointmentRepo.Search(
+                patientId: null,
+                providerId: providerId,
+                siteId: siteId,
+                date: date,
+                status: null);
+
+            var hasOverlap = appointments.Any(a =>
+                !string.Equals(a.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(a.Status, "NoShow", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(a.Status, "Completed", StringComparison.OrdinalIgnoreCase) &&
+                a.StartTime < end &&
+                start < a.EndTime);
+
+            if (hasOverlap)
+                throw new ArgumentException("Cannot block this time range because one or more appointments already exist in this slot.");
         }
     }
 }

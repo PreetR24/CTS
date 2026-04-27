@@ -24,17 +24,26 @@ namespace CareSchedule.Repositories.Implementation
 
         public CheckIn? GetById(int checkInId)
         {
-            return _db.CheckIns.Include(c => c.Appointment).FirstOrDefault(c => c.CheckInId == checkInId);
+            return _db.CheckIns
+                .Include(c => c.Appointment)
+                .ThenInclude(a => a.Patient)
+                .FirstOrDefault(c => c.CheckInId == checkInId);
         }
 
         public CheckIn? GetByAppointmentId(int appointmentId)
         {
-            return _db.CheckIns.Include(c => c.Appointment).FirstOrDefault(c => c.AppointmentId == appointmentId);
+            return _db.CheckIns
+                .Include(c => c.Appointment)
+                .ThenInclude(a => a.Patient)
+                .FirstOrDefault(c => c.AppointmentId == appointmentId);
         }
 
         public IEnumerable<CheckIn> Search(int? siteId, int? providerId, int? nurseId, string? status)
         {
-            var q = _db.CheckIns.Include(c => c.Appointment).AsQueryable();
+            var q = _db.CheckIns
+                .Include(c => c.Appointment)
+                .ThenInclude(a => a.Patient)
+                .AsQueryable();
             if (siteId.HasValue) q = q.Where(c => c.Appointment.SiteId == siteId.Value);
             if (providerId.HasValue) q = q.Where(c => c.Appointment.ProviderId == providerId.Value);
             if (!string.IsNullOrWhiteSpace(status)) q = q.Where(c => c.Status == status);

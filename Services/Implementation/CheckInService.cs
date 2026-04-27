@@ -5,12 +5,14 @@ using CareSchedule.DTOs;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.Services.Implementation
 {
     public class CheckInService(
             ICheckInRepository _checkInRepo,
             IAppointmentRepository _apptRepo,
+            IRoomRepository _roomRepo,
             IResourceHoldRepository _resourceHoldRepo,
             IAuditLogService _auditService) : ICheckInService
     {
@@ -22,6 +24,16 @@ namespace CareSchedule.Services.Implementation
             if (appt == null) throw new KeyNotFoundException($"Appointment {appointmentId} not found.");
             if (appt.Status != "Booked")
                 throw new ArgumentException("Only 'Booked' appointments can be checked in.");
+            var appointmentStartUtc = new DateTime(
+                appt.SlotDate.Year,
+                appt.SlotDate.Month,
+                appt.SlotDate.Day,
+                appt.StartTime.Hour,
+                appt.StartTime.Minute,
+                0,
+                DateTimeKind.Unspecified);
+            if (appointmentStartUtc < TimeZoneHelper.NowIst())
+                throw new ArgumentException("Cannot check in past appointments. Mark as NoShow instead.");
 
             var existing = _checkInRepo.GetByAppointmentId(appointmentId);
             if (existing != null) throw new ArgumentException("Patient already checked in for this appointment.");
@@ -33,7 +45,7 @@ namespace CareSchedule.Services.Implementation
             {
                 AppointmentId = appointmentId,
                 TokenNo = string.IsNullOrWhiteSpace(dto.TokenNo) ? null : dto.TokenNo.Trim(),
-                CheckInTime = DateTime.UtcNow,
+                CheckInTime = TimeZoneHelper.NowIst(),
                 Status = "Waiting"
             };
             _checkInRepo.Add(entity);
@@ -66,6 +78,12 @@ namespace CareSchedule.Services.Implementation
             if (dto.RoomId <= 0) throw new ArgumentException("RoomId is required.");
             var appt = _apptRepo.GetById(entity.AppointmentId);
             if (appt == null) throw new KeyNotFoundException($"Appointment {entity.AppointmentId} not found.");
+            var room = _roomRepo.Get(dto.RoomId);
+            if (room == null) throw new KeyNotFoundException($"Room {dto.RoomId} not found.");
+            if (!string.Equals(room.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Selected room is not active.");
+            if (room.SiteId != appt.SiteId)
+                throw new ArgumentException("Selected room does not belong to this appointment site.");
 
             var roomBusy = HasAppointmentRoomConflict(
                 dto.RoomId,
@@ -290,6 +308,7 @@ namespace CareSchedule.Services.Implementation
         {
             CheckInId = c.CheckInId,
             AppointmentId = c.AppointmentId,
+            PatientName = c.Appointment?.Patient?.Name,
             TokenNo = c.TokenNo,
             CheckInTime = c.CheckInTime,
             RoomAssigned = c.RoomAssigned,

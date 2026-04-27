@@ -6,6 +6,7 @@ using CareSchedule.DTOs;
 using CareSchedule.Models;
 using CareSchedule.Repositories.Interface;
 using CareSchedule.Services.Interface;
+using CareSchedule.Shared.Time;
 
 namespace CareSchedule.Services.Implementation
 {
@@ -16,8 +17,8 @@ namespace CareSchedule.Services.Implementation
             var page = query.Page <= 0 ? 1 : query.Page;
             var pageSize = query.PageSize <= 0 ? 25 : query.PageSize;
 
-            var fromUtc = ParseIsoInstant(query.From)?.UtcDateTime;
-            var toUtc   = ParseIsoInstant(query.To)?.UtcDateTime;
+            var fromUtc = ParseIsoInstant(query.From);
+            var toUtc   = ParseIsoInstant(query.To);
 
             var (items, _) = _auditrepo.Search(
                 userId:   query.UserId,
@@ -64,14 +65,14 @@ namespace CareSchedule.Services.Implementation
             if (string.IsNullOrWhiteSpace(dto.Resource))
                 throw new ArgumentException("Resource is required.");
 
-            var instant = ParseIsoInstant(dto.Timestamp) ?? DateTimeOffset.UtcNow;
+            var instant = ParseIsoInstant(dto.Timestamp) ?? TimeZoneHelper.NowIst();
 
             var e = new AuditLog
             {
                 UserId    = dto.UserId,
                 Action    = dto.Action.Trim(),
                 Resource  = dto.Resource.Trim(),
-                Timestamp = instant.UtcDateTime, // store UTC in DB
+                Timestamp = instant,
                 Metadata  = dto.Metadata
             };
 
@@ -94,18 +95,17 @@ namespace CareSchedule.Services.Implementation
             Metadata  = a.Metadata
         };
 
-        private static DateTimeOffset? ParseIsoInstant(string? s)
+        private static DateTime? ParseIsoInstant(string? s)
         {
             if (string.IsNullOrWhiteSpace(s)) return null;
-            if (DateTimeOffset.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dto))
+            if (DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dto))
                 return dto;
             throw new ArgumentException("Invalid timestamp. Use ISO 8601 like 2026-03-05T10:00:00+05:30");
         }
 
-        private static string ToIso(DateTime utc)
+        private static string ToIso(DateTime local)
         {
-            var v = DateTime.SpecifyKind(utc, DateTimeKind.Utc);
-            return v.ToString("o", CultureInfo.InvariantCulture);
+            return local.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
         }
     }
 }
