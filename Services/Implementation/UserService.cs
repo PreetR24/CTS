@@ -31,6 +31,11 @@ namespace CareSchedule.Services.Implementation
             if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Name is required.");
             if (string.IsNullOrWhiteSpace(dto.Role)) throw new ArgumentException("Role is required.");
             if (string.IsNullOrWhiteSpace(dto.Email)) throw new ArgumentException("Email is required.");
+            if (dto.Name.Trim().Length < 2) throw new ArgumentException("Name must be at least 2 characters.");
+            if (!Regex.IsMatch(dto.Name.Trim(), @"^[A-Za-z][A-Za-z\s'.-]*$"))
+                throw new ArgumentException("Name contains invalid characters.");
+            if (!Regex.IsMatch(dto.Email.Trim(), @"^[^\s@]+@[^\s@]+\.[^\s@]+$"))
+                throw new ArgumentException("Enter a valid email address.");
             if (!string.IsNullOrWhiteSpace(dto.Phone) && !Regex.IsMatch(dto.Phone.Trim(), @"^\d{10}$"))
                 throw new ArgumentException("Phone number must be exactly 10 digits.");
             if (string.Equals(dto.Role, "Provider", StringComparison.OrdinalIgnoreCase))
@@ -74,9 +79,20 @@ namespace CareSchedule.Services.Implementation
             var e = _userrepo.Get(id);
             if (e is null) throw new KeyNotFoundException("User not found.");
 
-            if (!string.IsNullOrWhiteSpace(dto.Name)) e.Name = dto.Name.Trim();
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+            {
+                if (dto.Name.Trim().Length < 2) throw new ArgumentException("Name must be at least 2 characters.");
+                if (!Regex.IsMatch(dto.Name.Trim(), @"^[A-Za-z][A-Za-z\s'.-]*$"))
+                    throw new ArgumentException("Name contains invalid characters.");
+                e.Name = dto.Name.Trim();
+            }
             if (!string.IsNullOrWhiteSpace(dto.Role)) e.Role = dto.Role.Trim();
-            if (!string.IsNullOrWhiteSpace(dto.Email)) e.Email = dto.Email.Trim();
+            if (!string.IsNullOrWhiteSpace(dto.Email))
+            {
+                if (!Regex.IsMatch(dto.Email.Trim(), @"^[^\s@]+@[^\s@]+\.[^\s@]+$"))
+                    throw new ArgumentException("Enter a valid email address.");
+                e.Email = dto.Email.Trim();
+            }
             if (dto.Phone is not null)
             {
                 if (!string.IsNullOrWhiteSpace(dto.Phone) && !Regex.IsMatch(dto.Phone.Trim(), @"^\d{10}$"))

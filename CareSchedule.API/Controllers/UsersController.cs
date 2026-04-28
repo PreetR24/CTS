@@ -72,6 +72,8 @@ namespace CareSchedule.API.Controllers
     [Authorize(Roles = "Admin")]
         public ActionResult<ApiResponse<object>> Deactivate(int id)
         {
+            if (User.GetUserId() == id)
+                return BadRequest(ApiResponse<object>.Fail(new { code = "BAD_REQUEST" }, "You cannot deactivate your own account."));
             _userservice.DeactivateUser(id);
             return Ok(ApiResponse<object>.Ok(new { id }, "User deactivated."));
         }
